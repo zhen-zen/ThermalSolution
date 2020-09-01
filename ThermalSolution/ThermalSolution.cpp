@@ -102,6 +102,28 @@ bool ThermalSolution::evaluateAvailableMode() {
     return true;
 }
 
+void ThermalSolution::parsePath(OSDictionary *entry, OSDictionary *keyDesc, const char *name) {
+    int x = 1;
+    while (name[x] != '/') {
+        if (name[x] == '\0') {
+            entry->setObject(name, keyDesc);
+            return;
+        }
+        x++;
+    }
+    char *dictname = new char[x];
+    strncpy(dictname, name, x);
+    dictname[x] = '\0';
+    OSDictionary *subentry = OSDynamicCast(OSDictionary, entry->getObject(dictname));
+    if (!subentry) {
+        subentry = OSDictionary::withCapacity(1);
+        entry->setObject(dictname, subentry);
+        subentry->release();
+    }
+    const char *item = name + x;
+    parsePath(subentry, keyDesc, item);
+}
+
 bool ThermalSolution::evaluateGDDV() {
     OSObject *result;
     OSArray *package;
@@ -126,7 +148,7 @@ bool ThermalSolution::evaluateGDDV() {
     headerDesc->release();
 
     if (ver == 2) {
-        IOLog("Uncompress not implemented");
+        IOLog("Uncompress not implemented\n");
         return true;
     }
 
@@ -149,19 +171,18 @@ bool ThermalSolution::evaluateGDDV() {
 
         if (val->flag == 0x8) {
             const char *str = reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, val->length));
-            setPropertyString(entries, name, str);
+            setPropertyString(keyDesc, "string", str);
         } else {
             setPropertyNumber(keyDesc, "valtype", val->flag, 32);
             setPropertyNumber(keyDesc, "vallength", val->length, 32);
-            if (val->length < 0x30) {
-                OSData *data = OSData::withBytes(buf->getBytesNoCopy(offset, val->length), val->length);
-                keyDesc->setObject("val", data);
-                data->release();
-            }
-            entries->setObject(name, keyDesc);
+            if (val->length < 0x30)
+                setPropertyBytes(keyDesc, "val",buf->getBytesNoCopy(offset, val->length), val->length);
         }
         offset += val->length;
-
+        if (name[0] != '/')
+            entries->setObject(name, keyDesc);
+        else
+            parsePath(entries, keyDesc, name);
         keyDesc->release();
     }
     setProperty("GDDVEntry", entries);

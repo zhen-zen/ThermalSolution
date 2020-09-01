@@ -69,6 +69,8 @@ class ThermalSolution : public IOService {
 
     IOACPIPlatformDevice *dev;
     bool evaluateAvailableMode();
+    void parsePath(OSDictionary *entry, OSDictionary *keyDesc, const char *name);
+    
     bool evaluateGDDV();
     bool evaluateODVP();
 
