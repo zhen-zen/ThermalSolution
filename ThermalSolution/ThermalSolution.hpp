@@ -58,6 +58,14 @@ typedef struct __attribute__ ((packed)) {
     uint32_t length;
 } GDDVKeyHeader;
 
+#define type_uint64 4
+#define type_string 8
+
+typedef struct __attribute__ ((packed)) {
+    uint32_t type;
+    uint64_t value;
+} uint64Container;
+
 typedef struct __attribute__ ((packed)) {
     uint32_t signature;
     uint64_t version;
@@ -69,8 +77,12 @@ class ThermalSolution : public IOService {
 
     IOACPIPlatformDevice *dev;
     bool evaluateAvailableMode();
-    void parsePath(OSDictionary *entry, OSDictionary *keyDesc, const char *name);
+    const char *parsePath(OSDictionary *entry, const char *name, OSDictionary *keyDesc);
     
+    void parseAPPC(OSDictionary *keyDesc, const void *data, uint32_t length);
+    void parsePPCC(OSDictionary *keyDesc, const void *data, uint32_t length);
+    void parsePSVT(OSDictionary *keyDesc, const void *data, uint32_t length);
+
     bool evaluateGDDV();
     bool evaluateODVP();
 

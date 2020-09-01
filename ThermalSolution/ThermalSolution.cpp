@@ -102,12 +102,12 @@ bool ThermalSolution::evaluateAvailableMode() {
     return true;
 }
 
-void ThermalSolution::parsePath(OSDictionary *entry, OSDictionary *keyDesc, const char *name) {
+const char * ThermalSolution::parsePath(OSDictionary *entry, const char *name, OSDictionary *keyDesc) {
     int x = 1;
     while (name[x] != '/') {
         if (name[x] == '\0') {
             entry->setObject(name, keyDesc);
-            return;
+            return name;
         }
         x++;
     }
@@ -121,7 +121,78 @@ void ThermalSolution::parsePath(OSDictionary *entry, OSDictionary *keyDesc, cons
         subentry->release();
     }
     const char *item = name + x;
-    parsePath(subentry, keyDesc, item);
+    return parsePath(subentry, item, keyDesc);
+}
+
+void ThermalSolution::parseAPPC(OSDictionary *keyDesc, const void *data, uint32_t length) {
+    OSObject *value;
+    setPropertyBytes(keyDesc, "val", data, length);
+
+    const uint64Container *version = reinterpret_cast<const uint64Container *>(data);
+    setPropertyNumber(keyDesc, "version", version->value, 64);
+}
+
+void ThermalSolution::parsePPCC(OSDictionary *keyDesc, const void *data, uint32_t length) {
+    OSObject *value;
+    setPropertyBytes(keyDesc, "val", data, length);
+
+    const uint64Container *content = reinterpret_cast<const uint64Container *>(data);
+    setPropertyNumber(keyDesc, "power_limit_min", content[2].value, 64);
+    setPropertyNumber(keyDesc, "power_limit_max", content[3].value, 64);
+    setPropertyNumber(keyDesc, "time_wind_min", content[4].value, 64);
+    setPropertyNumber(keyDesc, "time_wind_max", content[5].value, 64);
+    setPropertyNumber(keyDesc, "step_size", content[6].value, 64);
+}
+
+void ThermalSolution::parsePSVT(OSDictionary *keyDesc, const void *data, uint32_t length) {
+    OSObject *value;
+//    setPropertyBytes(keyDesc, "val", data, length);
+
+    const char* offset = reinterpret_cast<const char *>(data);
+
+    const uint64Container *version = reinterpret_cast<const uint64Container *>(offset);
+    offset += sizeof(uint64Container);
+    setPropertyNumber(keyDesc, "version", version->value, 64);
+
+    OSArray *arr = OSArray::withCapacity(1);
+    while (offset < reinterpret_cast<const char *>(data) + length) {
+        OSDictionary *entry = OSDictionary::withCapacity(1);
+        const uint64Container *len1 = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "source", offset);
+        offset += len1->value;
+
+        const uint64Container *len2 = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "target", offset);
+        offset += len2->value;
+
+        const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
+        setPropertyNumber(entry, "priority", content[0].value, 64);
+        setPropertyNumber(entry, "sample_period", content[1].value, 64);
+        setPropertyNumber(entry, "temp", content[2].value, 64);
+        setPropertyNumber(entry, "domain", content[3].value, 64);
+        setPropertyNumber(entry, "control_knob", content[4].value, 64);
+
+        offset += 6 * sizeof(uint64Container);
+        if (content[5].type == type_string) {
+            setPropertyString(entry, "limit", offset);
+            offset += content[5].value;
+        } else {
+            setPropertyNumber(entry, "limit", content[5].value, 64);
+        }
+
+        const uint64Container *content2 = reinterpret_cast<const uint64Container *>(offset);
+        setPropertyNumber(entry, "step_size", content2[0].value, 64);
+        setPropertyNumber(entry, "limit_coeff", content2[1].value, 64);
+        setPropertyNumber(entry, "unlimit_coeff", content2[2].value, 64);
+        setPropertyNumber(entry, "placeholder", content2[3].value, 64);
+        offset += 4 * sizeof(uint64Container);
+        arr->setObject(entry);
+        entry->release();
+    }
+    keyDesc->setObject("PSVT", arr);
+    arr->release();
 }
 
 bool ThermalSolution::evaluateGDDV() {
@@ -166,23 +237,35 @@ bool ThermalSolution::evaluateGDDV() {
         const char *name = reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, key->length));
         offset += key->length;
 
+        if (name[0] != '/')
+            entries->setObject(name, keyDesc);
+        else
+            name = parsePath(entries, name, keyDesc);
+
         const GDDVKeyHeader *val = reinterpret_cast<const GDDVKeyHeader *>(buf->getBytesNoCopy(offset, sizeof(GDDVKeyHeader)));
         offset += sizeof(GDDVKeyHeader);
 
         if (val->flag == 0x8) {
             const char *str = reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, val->length));
             setPropertyString(keyDesc, "string", str);
+        } else if (val->flag == 0x1a) {
+            if (val->length == 4)
+                setPropertyNumber(keyDesc, "val", *(reinterpret_cast<const uint32_t *>(buf->getBytesNoCopy(offset, val->length))), 32);
+            else
+                setPropertyBytes(keyDesc, "val", buf->getBytesNoCopy(offset, val->length), val->length);
         } else {
             setPropertyNumber(keyDesc, "valtype", val->flag, 32);
             setPropertyNumber(keyDesc, "vallength", val->length, 32);
-            if (val->length < 0x30)
-                setPropertyBytes(keyDesc, "val",buf->getBytesNoCopy(offset, val->length), val->length);
+            if (!strncmp(name, "/appc", strlen("/appc")))
+                parseAPPC(keyDesc, buf->getBytesNoCopy(offset, val->length), val->length);
+            else if (!strncmp(name, "/ppcc", strlen("/ppcc")))
+                parsePPCC(keyDesc, buf->getBytesNoCopy(offset, val->length), val->length);
+            else if (!strncmp(name, "/psvt", strlen("/psvt")))
+                parsePSVT(keyDesc, buf->getBytesNoCopy(offset, val->length), val->length);
+            else if (val->length < 0x30)
+                setPropertyBytes(keyDesc, "val", buf->getBytesNoCopy(offset, val->length), val->length);
         }
         offset += val->length;
-        if (name[0] != '/')
-            entries->setObject(name, keyDesc);
-        else
-            parsePath(entries, keyDesc, name);
         keyDesc->release();
     }
     setProperty("GDDVEntry", entries);
