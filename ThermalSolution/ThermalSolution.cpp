@@ -102,17 +102,17 @@ bool ThermalSolution::evaluateAvailableMode() {
     return true;
 }
 
-const char * ThermalSolution::parsePath(OSDictionary *entry, const char *name, OSDictionary *keyDesc) {
+OSDictionary *ThermalSolution::parsePath(OSDictionary *entry, const char *&path) {
     int x = 1;
-    while (name[x] != '/') {
-        if (name[x] == '\0') {
-            entry->setObject(name, keyDesc);
-            return name;
+    while (path[x] != '/') {
+        if (path[x] == '\0') {
+            entry->retain();
+            return entry;
         }
         x++;
     }
     char *dictname = new char[x];
-    strncpy(dictname, name, x);
+    strncpy(dictname, path, x);
     dictname[x] = '\0';
     OSDictionary *subentry = OSDynamicCast(OSDictionary, entry->getObject(dictname));
     if (!subentry) {
@@ -120,57 +120,275 @@ const char * ThermalSolution::parsePath(OSDictionary *entry, const char *name, O
         entry->setObject(dictname, subentry);
         subentry->release();
     }
-    const char *item = name + x;
-    return parsePath(subentry, item, keyDesc);
+    delete [] dictname;
+    path += x;
+    return parsePath(subentry, path);
 }
 
-void ThermalSolution::parseAPPC(OSDictionary *keyDesc, const void *data, uint32_t length) {
+OSDictionary *ThermalSolution::parseAPAT(const void *data, uint32_t length) {
+    OSDictionary *ret = OSDictionary::withCapacity(1);
     OSObject *value;
-    setPropertyBytes(keyDesc, "val", data, length);
 
     const uint64Container *version = reinterpret_cast<const uint64Container *>(data);
-    setPropertyNumber(keyDesc, "version", version->value, 64);
+    setPropertyNumber(ret, "version", version->value, 64);
+    if (version->type != 4 || version->value != 2)
+        return ret;
+
+    const char* offset = reinterpret_cast<const char *>(data);
+    offset += sizeof(uint64Container);
+    OSArray *arr = OSArray::withCapacity(1);
+    while (offset < reinterpret_cast<const char *>(data) + length) {
+        OSDictionary *entry = OSDictionary::withCapacity(1);
+        const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
+        setPropertyNumber(entry, "target_id", content->value, 64);
+        offset += sizeof(uint64Container);
+
+        const uint64Container *str = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "name", offset);
+        offset += str->value;
+
+        str = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "participant", offset);
+        offset += str->value;
+
+        content = reinterpret_cast<const uint64Container *>(offset);
+        setPropertyNumber(entry, "domain", content->value, 64);
+        offset += sizeof(uint64Container);
+
+        str = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "code", offset);
+        offset += str->value;
+
+        str = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "argument", offset);
+        offset += str->value;
+
+        arr->setObject(entry);
+        entry->release();
+    }
+    ret->setObject("targets", arr);
+    arr->release();
+    return ret;
 }
 
-void ThermalSolution::parsePPCC(OSDictionary *keyDesc, const void *data, uint32_t length) {
+OSDictionary *ThermalSolution::parseAPCT(const void *data, uint32_t length) {
+    OSDictionary *ret = OSDictionary::withCapacity(1);
     OSObject *value;
-    setPropertyBytes(keyDesc, "val", data, length);
+
+    const uint64Container *version = reinterpret_cast<const uint64Container *>(data);
+    setPropertyNumber(ret, "version", version->value, 64);
+    if (version->type != 4)
+        return ret;
+
+    const char* offset = reinterpret_cast<const char *>(data);
+    offset += sizeof(uint64Container);
+    OSDictionary *arr = OSDictionary::withCapacity(1);
+    switch (version->value) {
+        case 1:
+        {
+            while (offset < reinterpret_cast<const char *>(data) + length) {
+                OSArray *condition_set = OSArray::withCapacity(1);
+                const uint64Container *target = reinterpret_cast<const uint64Container *>(offset);
+                offset += sizeof(uint64Container);
+                for (int i = 0; i < 10; i++) {
+                    OSDictionary *condition = OSDictionary::withCapacity(1);
+
+                    const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
+                    setPropertyNumber(condition, "condition", content[0].value, 64);
+                    setPropertyNumber(condition, "comparison", content[1].value, 64);
+                    setPropertyNumber(condition, "argument", content[2].value, 64);
+                    offset += 3 * sizeof(uint64Container);
+
+                    if (i < 9) {
+                        setPropertyNumber(condition, "operation", content[3].value, 64);
+                        offset += sizeof(uint64Container);
+                        if (content[3].value == FOR) {
+                            setPropertyNumber(condition, "unknown2", content[4].value, 64);
+                            setPropertyNumber(condition, "time_comparison", content[5].value, 64);
+                            setPropertyNumber(condition, "time", content[6].value, 64);
+                            setPropertyNumber(condition, "unknown3", content[7].value, 64);
+                            offset += 4 * sizeof(uint64Container);
+                            i++;
+                        }
+                    }
+                    condition_set->setObject(condition);
+                    condition->release();
+                }
+                char *name = new char[10];
+                snprintf(name, 10, "target%llX", target->value);
+                arr->setObject(name, condition_set);
+                delete [] name;
+                condition_set->release();
+            }
+            break;
+        }
+
+        case 2:
+        {
+            while (offset < reinterpret_cast<const char *>(data) + length) {
+                OSArray *condition_set = OSArray::withCapacity(1);
+                const uint64Container *target = reinterpret_cast<const uint64Container *>(offset);
+                offset += sizeof(uint64Container);
+                const uint64Container *count = reinterpret_cast<const uint64Container *>(offset);
+                offset += sizeof(uint64Container);
+                for (int i = 0; i < count->value; i++) {
+                    OSDictionary *condition = OSDictionary::withCapacity(1);
+
+                    const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
+                    setPropertyNumber(condition, "condition", content[0].value, 64);
+                    offset += sizeof(uint64Container);
+                    const uint64Container *str = reinterpret_cast<const uint64Container *>(offset);
+                    offset += sizeof(uint64Container);
+                    setPropertyString(condition, "device", offset);
+                    offset += str->value;
+
+                    content = reinterpret_cast<const uint64Container *>(offset);
+                    setPropertyNumber(condition, "unknown0", content[0].value, 64);
+                    setPropertyNumber(condition, "comparison", content[1].value, 64);
+                    setPropertyNumber(condition, "argument", content[2].value, 64);
+                    offset += 3 * sizeof(uint64Container);
+
+                    if (i < (count->value - 1)) {
+                        setPropertyNumber(condition, "operation", content[3].value, 64);
+                        offset += sizeof(uint64Container);
+                        if (content[3].value == FOR) {
+                            setPropertyNumber(condition, "unknown1", content[4].value, 64);
+                            offset += sizeof(uint64Container);
+                            str = reinterpret_cast<const uint64Container *>(offset);
+                            offset += sizeof(uint64Container);
+                            setPropertyString(condition, "device", offset);
+                            offset += str->value;
+
+                            content = reinterpret_cast<const uint64Container *>(offset);
+                            setPropertyNumber(condition, "unknown2", content[0].value, 64);
+                            setPropertyNumber(condition, "time_comparison", content[1].value, 64);
+                            setPropertyNumber(condition, "time", content[2].value, 64);
+                            setPropertyNumber(condition, "unknown3", content[3].value, 64);
+                            offset += 4 * sizeof(uint64Container);
+                            i++;
+                        }
+                    }
+                    condition_set->setObject(condition);
+                    condition->release();
+                }
+                char *name = new char[10];
+                snprintf(name, 10, "target%llX", target->value);
+                arr->setObject(name, condition_set);
+                delete [] name;
+                condition_set->release();
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+    ret->setObject("conditions", arr);
+    arr->release();
+    return ret;
+}
+
+OSDictionary *ThermalSolution::parseAPPC(const void *data, uint32_t length) {
+    OSDictionary *ret = OSDictionary::withCapacity(1);
+    OSObject *value;
+
+    const uint64Container *version = reinterpret_cast<const uint64Container *>(data);
+    setPropertyNumber(ret, "version", version->value, 64);
+    if (version->type != 4 || version->value != 1)
+        return ret;
+
+    const char* offset = reinterpret_cast<const char *>(data);
+    offset += sizeof(uint64Container);
+    OSArray *arr = OSArray::withCapacity(1);
+    while (offset < reinterpret_cast<const char *>(data) + length) {
+        OSDictionary *entry = OSDictionary::withCapacity(1);
+        const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
+        setPropertyNumber(entry, "condition", content->value, 64);
+        offset += sizeof(uint64Container);
+
+        const uint64Container *str = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "name", offset);
+        offset += str->value;
+
+        str = reinterpret_cast<const uint64Container *>(offset);
+        offset += sizeof(uint64Container);
+        setPropertyString(entry, "participant", offset);
+        offset += str->value;
+
+        content = reinterpret_cast<const uint64Container *>(offset);
+        setPropertyNumber(entry, "domain", content[0].value, 64);
+        setPropertyNumber(entry, "type", content[1].value, 64);
+        offset += 2 * sizeof(uint64Container);
+
+        arr->setObject(entry);
+        entry->release();
+    }
+    ret->setObject("custom_conditions", arr);
+    arr->release();
+    return ret;
+}
+
+OSDictionary *ThermalSolution::parsePPCC(const void *data, uint32_t length) {
+    OSDictionary *ret = OSDictionary::withCapacity(1);
+    OSObject *value;
 
     const uint64Container *content = reinterpret_cast<const uint64Container *>(data);
-    setPropertyNumber(keyDesc, "power_limit_min", content[2].value, 64);
-    setPropertyNumber(keyDesc, "power_limit_max", content[3].value, 64);
-    setPropertyNumber(keyDesc, "time_wind_min", content[4].value, 64);
-    setPropertyNumber(keyDesc, "time_wind_max", content[5].value, 64);
-    setPropertyNumber(keyDesc, "step_size", content[6].value, 64);
+    setPropertyNumber(ret, "unknown0", content[0].value, 64);
+    setPropertyNumber(ret, "unknown1", content[1].value, 64);
+    setPropertyNumber(ret, "power_limit_min", content[2].value, 64);
+    setPropertyNumber(ret, "power_limit_max", content[3].value, 64);
+    setPropertyNumber(ret, "time_wind_min", content[4].value, 64);
+    setPropertyNumber(ret, "time_wind_max", content[5].value, 64);
+    setPropertyNumber(ret, "step_size", content[6].value, 64);
+    for (int i = 7; i < length / sizeof(uint64Container); i++) {
+        char *name = new char[10];
+        snprintf(name, 10, "unknown%X", i);
+        setPropertyNumber(ret, name, content[i].value, 64);
+        delete [] name;
+    }
+    return ret;
 }
 
-void ThermalSolution::parsePSVT(OSDictionary *keyDesc, const void *data, uint32_t length) {
+OSDictionary *ThermalSolution::parsePSVT(const void *data, uint32_t length) {
+    OSDictionary *ret = OSDictionary::withCapacity(1);
     OSObject *value;
-//    setPropertyBytes(keyDesc, "val", data, length);
 
     const char* offset = reinterpret_cast<const char *>(data);
 
     const uint64Container *version = reinterpret_cast<const uint64Container *>(offset);
     offset += sizeof(uint64Container);
-    setPropertyNumber(keyDesc, "version", version->value, 64);
+    setPropertyNumber(ret, "version", version->value, 64);
+    if (version->type != 4 || version->value != 2)
+        return ret;
 
     OSArray *arr = OSArray::withCapacity(1);
     while (offset < reinterpret_cast<const char *>(data) + length) {
         OSDictionary *entry = OSDictionary::withCapacity(1);
-        const uint64Container *len1 = reinterpret_cast<const uint64Container *>(offset);
+        const uint64Container *str = reinterpret_cast<const uint64Container *>(offset);
         offset += sizeof(uint64Container);
         setPropertyString(entry, "source", offset);
-        offset += len1->value;
+        offset += str->value;
 
-        const uint64Container *len2 = reinterpret_cast<const uint64Container *>(offset);
+        str = reinterpret_cast<const uint64Container *>(offset);
         offset += sizeof(uint64Container);
         setPropertyString(entry, "target", offset);
-        offset += len2->value;
+        offset += str->value;
 
         const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
         setPropertyNumber(entry, "priority", content[0].value, 64);
         setPropertyNumber(entry, "sample_period", content[1].value, 64);
-        setPropertyNumber(entry, "temp", content[2].value, 64);
+
+        char *temp = new char[10];
+        SInt64 celsius = content[2].value - 2732;
+        snprintf(temp, 10, "%lld.%lld℃", celsius / 10, celsius % 10);
+        setPropertyString(entry, "temp", temp);
+        delete [] temp;
+
         setPropertyNumber(entry, "domain", content[3].value, 64);
         setPropertyNumber(entry, "control_knob", content[4].value, 64);
 
@@ -182,17 +400,18 @@ void ThermalSolution::parsePSVT(OSDictionary *keyDesc, const void *data, uint32_
             setPropertyNumber(entry, "limit", content[5].value, 64);
         }
 
-        const uint64Container *content2 = reinterpret_cast<const uint64Container *>(offset);
-        setPropertyNumber(entry, "step_size", content2[0].value, 64);
-        setPropertyNumber(entry, "limit_coeff", content2[1].value, 64);
-        setPropertyNumber(entry, "unlimit_coeff", content2[2].value, 64);
-        setPropertyNumber(entry, "placeholder", content2[3].value, 64);
+        content = reinterpret_cast<const uint64Container *>(offset);
+        setPropertyNumber(entry, "step_size", content[0].value, 64);
+        setPropertyNumber(entry, "limit_coeff", content[1].value, 64);
+        setPropertyNumber(entry, "unlimit_coeff", content[2].value, 64);
+        setPropertyNumber(entry, "unknown", content[3].value, 64);
         offset += 4 * sizeof(uint64Container);
         arr->setObject(entry);
         entry->release();
     }
-    keyDesc->setObject("PSVT", arr);
+    ret->setObject("psvs", arr);
     arr->release();
+    return ret;
 }
 
 bool ThermalSolution::evaluateGDDV() {
@@ -227,46 +446,62 @@ bool ThermalSolution::evaluateGDDV() {
 
     OSDictionary *entries = OSDictionary::withCapacity(1);
     while ((offset < buf->getLength())) {
-        OSDictionary *keyDesc = OSDictionary::withCapacity(1);
-
         const GDDVKeyHeader *key = reinterpret_cast<const GDDVKeyHeader *>(buf->getBytesNoCopy(offset, sizeof(GDDVKeyHeader)));
         offset += sizeof(GDDVKeyHeader);
 
-        if (key->flag != 1)
-            setPropertyNumber(keyDesc, "keyflags", key->flag, 32);
         const char *name = reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, key->length));
         offset += key->length;
-
-        if (name[0] != '/')
-            entries->setObject(name, keyDesc);
-        else
-            name = parsePath(entries, name, keyDesc);
 
         const GDDVKeyHeader *val = reinterpret_cast<const GDDVKeyHeader *>(buf->getBytesNoCopy(offset, sizeof(GDDVKeyHeader)));
         offset += sizeof(GDDVKeyHeader);
 
-        if (val->flag == 0x8) {
-            const char *str = reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, val->length));
-            setPropertyString(keyDesc, "string", str);
-        } else if (val->flag == 0x1a) {
-            if (val->length == 4)
-                setPropertyNumber(keyDesc, "val", *(reinterpret_cast<const uint32_t *>(buf->getBytesNoCopy(offset, val->length))), 32);
-            else
-                setPropertyBytes(keyDesc, "val", buf->getBytesNoCopy(offset, val->length), val->length);
-        } else {
-            setPropertyNumber(keyDesc, "valtype", val->flag, 32);
-            setPropertyNumber(keyDesc, "vallength", val->length, 32);
-            if (!strncmp(name, "/appc", strlen("/appc")))
-                parseAPPC(keyDesc, buf->getBytesNoCopy(offset, val->length), val->length);
-            else if (!strncmp(name, "/ppcc", strlen("/ppcc")))
-                parsePPCC(keyDesc, buf->getBytesNoCopy(offset, val->length), val->length);
-            else if (!strncmp(name, "/psvt", strlen("/psvt")))
-                parsePSVT(keyDesc, buf->getBytesNoCopy(offset, val->length), val->length);
-            else if (val->length < 0x30)
-                setPropertyBytes(keyDesc, "val", buf->getBytesNoCopy(offset, val->length), val->length);
+        if (name[0] != '/' || key->flag != 1) {
+            entries->setObject(name, kOSBooleanFalse);
+            offset += val->length;
+            continue;
+        }
+
+        OSDictionary *parent = parsePath(entries, name);
+        OSObject *content = nullptr;
+
+        switch (val->flag) {
+            case type_string:
+                content = OSString::withCString(reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, val->length)));
+                break;
+
+            case type_container:
+                if (!strncmp(name, "/apat", strlen("/apat")))
+                    content = parseAPAT(buf->getBytesNoCopy(offset, val->length), val->length);
+                else if (!strncmp(name, "/apct", strlen("/apct")))
+                    content = parseAPCT(buf->getBytesNoCopy(offset, val->length), val->length);
+                else if (!strncmp(name, "/appc", strlen("/appc")))
+                    content = parseAPPC(buf->getBytesNoCopy(offset, val->length), val->length);
+                else if (!strncmp(name, "/ppcc", strlen("/ppcc")))
+                    content = parsePPCC(buf->getBytesNoCopy(offset, val->length), val->length);
+                else if (!strncmp(name, "/psvt", strlen("/psvt")))
+                    content = parsePSVT(buf->getBytesNoCopy(offset, val->length), val->length);
+                if (content)
+                    break;
+
+            case type_uint32:
+                if (val->length == 4) {
+                    content = OSNumber::withNumber(*(reinterpret_cast<const uint32_t *>(buf->getBytesNoCopy(offset, val->length))), 32);
+                    break;
+                }
+
+            default:
+                OSDictionary *keyDesc = OSDictionary::withCapacity(1);
+                setPropertyNumber(keyDesc, "type", val->flag, 32);
+                setPropertyNumber(keyDesc, "length", val->length, 32);
+                if (val->length < 0x30)
+                    setPropertyBytes(keyDesc, "value", buf->getBytesNoCopy(offset, val->length), val->length);
+                content = keyDesc;
+                break;
         }
         offset += val->length;
-        keyDesc->release();
+        parent->setObject(name, content);
+        OSSafeReleaseNULL(content);
+        OSSafeReleaseNULL(parent);
     }
     setProperty("GDDVEntry", entries);
     entries->release();

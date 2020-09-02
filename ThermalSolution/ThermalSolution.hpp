@@ -46,6 +46,78 @@ static const char *int3400_thermal_uuids[INT3400_THERMAL_MAXIMUM_UUID] = {
     "BE84BABF-C4D4-403D-B495-3128FD44dAC1",
 };
 
+// from intel/thermal_daemon/src/thd_engine_adaptive.h
+
+enum adaptive_condition {
+    Default = 0x01,
+    Orientation,
+    Proximity,
+    Motion,
+    Dock,
+    Workload,
+    Cooling_mode,
+    Power_source,
+    Aggregate_power_percentage,
+    Lid_state,
+    Platform_type,
+    Platform_SKU,
+    Utilisation,
+    TDP,
+    Duty_cycle,
+    Power,
+    Temperature,
+    Display_orientation,
+    Oem0,
+    Oem1,
+    Oem2,
+    Oem3,
+    Oem4,
+    Oem5,
+    PMAX,
+    PSRC,
+    ARTG,
+    CTYP,
+    PROP,
+    Unk1,
+    Unk2,
+    Battery_state,
+    Battery_rate,
+    Battery_remaining,
+    Battery_voltage,
+    PBSS,
+    Battery_cycles,
+    Battery_last_full,
+    Power_personality,
+    Battery_design_capacity,
+    Screen_state,
+    AVOL,
+    ACUR,
+    AP01,
+    AP02,
+    AP10,
+    Time,
+    Temperature_without_hysteresis,
+    Mixed_reality,
+    User_presence,
+    RBHF,
+    VBNL,
+    CMPP,
+    Battery_percentage,
+    Battery_count,
+    Power_slider
+};
+
+enum adaptive_operation {
+    AND = 0x01,
+    FOR
+};
+
+enum adaptive_comparison {
+    ADAPTIVE_EQUAL = 0x01,
+    ADAPTIVE_LESSER_OR_EQUAL,
+    ADAPTIVE_GREATER_OR_EQUAL,
+};
+
 typedef struct __attribute__ ((packed)) {
     uint16_t signature;
     uint16_t headersize;
@@ -59,17 +131,14 @@ typedef struct __attribute__ ((packed)) {
 } GDDVKeyHeader;
 
 #define type_uint64 4
+#define type_container 7
 #define type_string 8
+#define type_uint32 0x1a
 
 typedef struct __attribute__ ((packed)) {
     uint32_t type;
     uint64_t value;
 } uint64Container;
-
-typedef struct __attribute__ ((packed)) {
-    uint32_t signature;
-    uint64_t version;
-} appcHeader;
 
 class ThermalSolution : public IOService {
     typedef IOService super;
@@ -77,11 +146,13 @@ class ThermalSolution : public IOService {
 
     IOACPIPlatformDevice *dev;
     bool evaluateAvailableMode();
-    const char *parsePath(OSDictionary *entry, const char *name, OSDictionary *keyDesc);
+    OSDictionary *parsePath(OSDictionary *entry, const char *&path);
     
-    void parseAPPC(OSDictionary *keyDesc, const void *data, uint32_t length);
-    void parsePPCC(OSDictionary *keyDesc, const void *data, uint32_t length);
-    void parsePSVT(OSDictionary *keyDesc, const void *data, uint32_t length);
+    OSDictionary *parseAPAT(const void *data, uint32_t length);
+    OSDictionary *parseAPCT(const void *data, uint32_t length);
+    OSDictionary *parseAPPC(const void *data, uint32_t length);
+    OSDictionary *parsePPCC(const void *data, uint32_t length);
+    OSDictionary *parsePSVT(const void *data, uint32_t length);
 
     bool evaluateGDDV();
     bool evaluateODVP();
