@@ -158,7 +158,7 @@ class ThermalSolution : public IOService {
     bool evaluateODVP();
 
 public:
-    IOService *probe(IOService *provider, SInt32 *score) APPLE_KEXT_OVERRIDE;
+    bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
     IOReturn message(UInt32 type, IOService *provider, void *argument) APPLE_KEXT_OVERRIDE;
 };
 #endif /* DPTFSolution_hpp */

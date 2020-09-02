@@ -11,17 +11,16 @@
 
 OSDefineMetaClassAndStructors(ThermalSolution, IOService)
 
-IOService *ThermalSolution::probe(IOService *provider, SInt32 *score) {
-    if (!super::probe(provider, score) ||
-        !(dev = OSDynamicCast(IOACPIPlatformDevice, provider)))
-        return nullptr;
+bool ThermalSolution::start(IOService *provider) {
+    if (!super::start(provider) || !(dev = OSDynamicCast(IOACPIPlatformDevice, provider)))
+        return false;
 
     /* Missing IDSP isn't fatal */
     evaluateAvailableMode();
     evaluateGDDV();
     evaluateODVP();
 
-    return this;
+    return true;
 }
 
 bool ThermalSolution::evaluateAvailableMode() {
@@ -480,23 +479,20 @@ bool ThermalSolution::evaluateGDDV() {
                     content = parsePPCC(buf->getBytesNoCopy(offset, val->length), val->length);
                 else if (!strncmp(name, "/psvt", strlen("/psvt")))
                     content = parsePSVT(buf->getBytesNoCopy(offset, val->length), val->length);
-                if (content)
-                    break;
+                break;
 
             case type_uint32:
-                if (val->length == 4) {
+                if (val->length == 4)
                     content = OSNumber::withNumber(*(reinterpret_cast<const uint32_t *>(buf->getBytesNoCopy(offset, val->length))), 32);
-                    break;
-                }
-
-            default:
-                OSDictionary *keyDesc = OSDictionary::withCapacity(1);
-                setPropertyNumber(keyDesc, "type", val->flag, 32);
-                setPropertyNumber(keyDesc, "length", val->length, 32);
-                if (val->length < 0x30)
-                    setPropertyBytes(keyDesc, "value", buf->getBytesNoCopy(offset, val->length), val->length);
-                content = keyDesc;
                 break;
+        }
+        if (!content) {
+            OSDictionary *keyDesc = OSDictionary::withCapacity(1);
+            setPropertyNumber(keyDesc, "type", val->flag, 32);
+            setPropertyNumber(keyDesc, "length", val->length, 32);
+            if (val->length < 0x30)
+                setPropertyBytes(keyDesc, "value", buf->getBytesNoCopy(offset, val->length), val->length);
+            content = keyDesc;
         }
         offset += val->length;
         parent->setObject(name, content);
