@@ -10,6 +10,7 @@
 #ifndef ThermalSolution_hpp
 #define ThermalSolution_hpp
 
+#include <IOKit/IOCommandGate.h>
 #include <IOKit/IOService.h>
 #include <IOKit/acpi/IOACPIPlatformDevice.h>
 #include "common.h"
@@ -167,7 +168,12 @@ class ThermalSolution : public IOService {
     typedef IOService super;
     OSDeclareDefaultStructors(ThermalSolution)
 
-    IOACPIPlatformDevice *dev;
+    const char *name;
+    IOACPIPlatformDevice *dev {nullptr};
+
+    IOWorkLoop *workLoop {nullptr};
+    IOCommandGate *commandGate {nullptr};
+
     bool evaluateAvailableMode();
     uint32_t uuid_bitmap {0};
     bool changeMode(int i, bool enable);
@@ -183,8 +189,13 @@ class ThermalSolution : public IOService {
     bool evaluateGDDV();
     bool evaluateODVP();
 
+    void setPropertiesGated(OSObject* props);
+
 public:
     bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
+    void stop(IOService *provider) APPLE_KEXT_OVERRIDE;
+
     IOReturn message(UInt32 type, IOService *provider, void *argument) APPLE_KEXT_OVERRIDE;
+    IOReturn setProperties(OSObject *props) APPLE_KEXT_OVERRIDE;
 };
 #endif /* DPTFSolution_hpp */

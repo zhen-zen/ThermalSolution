@@ -15,12 +15,33 @@ bool ThermalSolution::start(IOService *provider) {
     if (!super::start(provider) || !(dev = OSDynamicCast(IOACPIPlatformDevice, provider)))
         return false;
 
+    name = dev->getName();
+    workLoop = IOWorkLoop::workLoop();
+    commandGate = IOCommandGate::commandGate(this);
+    if (!workLoop || !commandGate || (workLoop->addEventSource(commandGate) != kIOReturnSuccess)) {
+        IOLog("Failed to add commandGate\n");
+        return false;
+    }
+
     /* Missing IDSP isn't fatal */
     evaluateAvailableMode();
     evaluateGDDV();
     evaluateODVP();
 
+    IOLog("%s::%s starting\n", getName(), name);
+    registerService();
     return true;
+}
+
+void ThermalSolution::stop(IOService *provider) {
+    IOLog("%s::%s stoping\n", getName(), name);
+
+    workLoop->removeEventSource(commandGate);
+    OSSafeReleaseNULL(commandGate);
+    OSSafeReleaseNULL(workLoop);
+
+    terminate();
+    super::stop(provider);
 }
 
 bool ThermalSolution::evaluateAvailableMode() {
@@ -601,4 +622,28 @@ IOReturn ThermalSolution::message(UInt32 type, IOService *provider, void *argume
         IOLog("message: type=%x, provider=%s\n", type, provider->getName());
     }
     return kIOReturnSuccess;
+}
+
+IOReturn ThermalSolution::setProperties(OSObject *props) {
+    commandGate->runAction(OSMemberFunctionCast(IOCommandGate::Action, this, &ThermalSolution::setPropertiesGated), props);
+    return kIOReturnSuccess;
+}
+
+void ThermalSolution::setPropertiesGated(OSObject* props) {
+    OSDictionary* dict = OSDynamicCast(OSDictionary, props);
+    if (!dict)
+        return;
+
+    for (int i = 0; i < INT3400_THERMAL_MAXIMUM_UUID; i++) {
+        if ((dict->getObject(int3400_thermal_uuids[i]))) {
+            OSBoolean *value = OSDynamicCast(OSBoolean, dict->getObject(int3400_thermal_uuids[i]));
+            if (value == nullptr)
+                IOLog("Invald status\n");
+
+            if (changeMode(i, value->getValue()))
+                IOLog("%s mode %s\n", value->getValue() ? "Enabled" : "Disabled", int3400_thermal_uuids[i]);
+            return;
+        }
+    }
+    IOLog("Could not find known policy UUID\n");
 }
