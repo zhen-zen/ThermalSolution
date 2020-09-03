@@ -14,6 +14,22 @@
 #include <IOKit/acpi/IOACPIPlatformDevice.h>
 #include "common.h"
 
+#define DPTF_OSC_REVISION 1
+
+// from linux/include/linux/acpi.h
+
+/* Indexes into _OSC Capabilities Buffer (DWORDs 2 & 3 are device-specific) */
+#define OSC_QUERY_DWORD              0    /* DWORD 1 */
+#define OSC_SUPPORT_DWORD            1    /* DWORD 2 */
+#define OSC_CONTROL_DWORD            2    /* DWORD 3 */
+
+/* _OSC Capabilities DWORD 1: Query/Control and Error Returns (generic) */
+#define OSC_QUERY_ENABLE             0x00000001  /* input */
+#define OSC_REQUEST_ERROR            0x00000002  /* return */
+#define OSC_INVALID_UUID_ERROR       0x00000004  /* return */
+#define OSC_INVALID_REVISION_ERROR   0x00000008  /* return */
+#define OSC_CAPABILITIES_MASK_ERROR  0x00000010  /* return */
+
 // from linux/drivers/thermal/intel/int340x_thermal/int3400_thermal.c
 
 #define INT3400_THERMAL_TABLE_CHANGED 0x83
@@ -146,6 +162,9 @@ class ThermalSolution : public IOService {
 
     IOACPIPlatformDevice *dev;
     bool evaluateAvailableMode();
+    uint32_t uuid_bitmap {0};
+    bool changeMode(int i, bool enable);
+
     OSDictionary *parsePath(OSDictionary *entry, const char *&path);
     
     OSDictionary *parseAPAT(const void *data, uint32_t length);

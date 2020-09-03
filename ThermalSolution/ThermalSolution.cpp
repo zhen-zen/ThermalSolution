@@ -52,6 +52,7 @@ bool ThermalSolution::evaluateAvailableMode() {
 
     for (int i = 0; i < INT3400_THERMAL_MAXIMUM_UUID; i++) {
         if ((mode->getObject(int3400_thermal_uuids[i]))) {
+            uuid_bitmap |= BIT(i);
             switch (i) {
                 case INT3400_THERMAL_PASSIVE_1:
                     setPropertyString(mode, int3400_thermal_uuids[i], "INT3400_THERMAL_PASSIVE_1");
@@ -512,6 +513,67 @@ bool ThermalSolution::evaluateODVP() {
         (package = OSDynamicCast(OSArray, result)))
         setProperty("ODVP", package);
     OSSafeReleaseNULL(result);
+    return true;
+}
+
+bool ThermalSolution::changeMode(int i, bool enable) {
+    if (!(uuid_bitmap & BIT(i))) {
+        IOLog("Mode %s is not available\n", int3400_thermal_uuids[i]);
+        return false;
+    }
+
+    uuid_t guid;
+    uuid_parse(int3400_thermal_uuids[i], guid);
+
+    // convert to mixed-endian
+    *(reinterpret_cast<uint32_t *>(guid)) = OSSwapInt32(*(reinterpret_cast<uint32_t *>(guid)));
+    *(reinterpret_cast<uint16_t *>(guid) + 2) = OSSwapInt16(*(reinterpret_cast<uint16_t *>(guid) + 2));
+    *(reinterpret_cast<uint16_t *>(guid) + 3) = OSSwapInt16(*(reinterpret_cast<uint16_t *>(guid) + 3));
+
+    UInt32 buf[2];
+    buf[OSC_QUERY_DWORD] = 0;
+    buf[OSC_SUPPORT_DWORD] = enable;
+
+    OSObject *params[] = {
+        OSData::withBytes(guid, 16),
+        OSNumber::withNumber(DPTF_OSC_REVISION, 32),
+        OSNumber::withNumber(sizeof(buf)/sizeof(UInt32), 32),
+        OSData::withBytes(buf, sizeof(buf)),
+    };
+
+    OSObject *result;
+
+    IOReturn ret = dev->evaluateObject("_OSC", &result, params, 4);
+    params[0]->release();
+    params[1]->release();
+    params[2]->release();
+    params[3]->release();
+    if (ret == kIOReturnSuccess) {
+        OSData *data;
+        const UInt32 *rbuf;
+        
+        if ((data = OSDynamicCast(OSData, result)) &&
+            (rbuf = reinterpret_cast<const UInt32 *>(data->getBytesNoCopy()))) {
+            UInt32 error = rbuf[0] & ~BIT(OSC_QUERY_ENABLE);
+            if (error & OSC_REQUEST_ERROR)
+                IOLog("_OSC request failed\n");
+            if (error & OSC_INVALID_UUID_ERROR)
+                IOLog("_OSC invalid UUID\n");
+            if (error & OSC_INVALID_REVISION_ERROR)
+                IOLog("_OSC invalid revision\n");
+            if (!error || error & OSC_CAPABILITIES_MASK_ERROR)
+                evaluateODVP();
+            else
+                ret = kIOReturnInvalid;
+        }
+    } else {
+        IOLog("_OSC evaluate failed\n");
+    }
+
+    if (ret != kIOReturnSuccess)
+        return false;
+
+    setProperty("currentUUID", int3400_thermal_uuids[i]);
     return true;
 }
 
