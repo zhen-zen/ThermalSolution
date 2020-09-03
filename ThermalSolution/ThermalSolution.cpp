@@ -93,6 +93,10 @@ bool ThermalSolution::evaluateAvailableMode() {
                 case INT3400_THERMAL_HARDWARE_DUTY_CYCLING:
                     setPropertyString(mode, int3400_thermal_uuids[i], "INT3400_THERMAL_HARDWARE_DUTY_CYCLING");
                     break;
+
+                case INT3400_THERMAL_ACTIVE_2:
+                    setPropertyString(mode, int3400_thermal_uuids[i], "INT3400_THERMAL_ACTIVE_2");
+                    break;
             }
         }
     }
