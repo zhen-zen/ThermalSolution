@@ -66,23 +66,21 @@ IOReturn SensorSolution::message(UInt32 type, IOService *provider, void *argumen
             if (argument) {
                 switch (*(UInt32 *) argument) {
                     case INT3403_PERF_CHANGED_EVENT:
-                        AlwaysLog("message: provider=%s, performance changed\n", provider->getName());
+                        AlwaysLog("ACPI notification: performance changed\n");
                         break;
 
                     case INT3403_PERF_TRIP_POINT_CHANGED:
-                        AlwaysLog("message: provider=%s, performance trip point changed\n", provider->getName());
+                        AlwaysLog("ACPI notification: performance trip point changed\n");
                         break;
 
                     case INT3403_THERMAL_EVENT:
-                        AlwaysLog("message: provider=%s, thermal event\n", provider->getName());
+                        AlwaysLog("ACPI notification: thermal event\n");
                         break;
 
                     default:
-                        AlwaysLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
+                        AlwaysLog("Unknown ACPI notification: argument=0x%04x\n", *((UInt32 *) argument));
                         break;
                 }
-            } else {
-                AlwaysLog("message: type=%x, provider=%s\n", type, provider->getName());
             }
             break;
 

@@ -14,9 +14,13 @@
 
 #define kDeliverNotifications   "ThermalNotifications"
 
+#define INT3401_TYPE_PROCESSOR      0x00 // aka B0D4
 #define INT3403_TYPE_SENSOR         0x03
 #define INT3403_TYPE_CHARGER        0x0B
 #define INT3403_TYPE_BATTERY        0x0C
+#define INT340D_TYPE_DGFX_CORE      0x24
+#define INT340D_TYPE_DGFX_MEM       0x25
+#define INT3530_TYPE_MULTI_CHIP     0x26
 
 enum
 {

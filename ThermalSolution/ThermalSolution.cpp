@@ -639,20 +639,18 @@ IOReturn ThermalSolution::message(UInt32 type, IOService *provider, void *argume
             if (argument) {
                 switch (*(UInt32 *) argument) {
                     case INT3400_THERMAL_TABLE_CHANGED:
-                        AlwaysLog("message: provider=%s, thermal table changed\n", provider->getName());
+                        AlwaysLog("ACPI notification: thermal table changed\n");
                         break;
 
                     case INT3400_ODVP_CHANGED:
-                        AlwaysLog("message: provider=%s, ODVP changed\n", provider->getName());
+                        AlwaysLog("ACPI notification: ODVP changed\n");
                         evaluateODVP();
                         break;
 
                     default:
-                        AlwaysLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
+                        AlwaysLog("Unknown ACPI notification: argument=0x%04x\n", *((UInt32 *) argument));
                         break;
                 }
-            } else {
-                AlwaysLog("message: type=%x, provider=%s\n", type, provider->getName());
             }
             break;
 
