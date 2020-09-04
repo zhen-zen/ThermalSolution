@@ -174,6 +174,17 @@ class ThermalSolution : public IOService {
     IOWorkLoop *workLoop {nullptr};
     IOCommandGate *commandGate {nullptr};
 
+    IONotifier* _publishNotify {nullptr};
+    IONotifier* _terminateNotify {nullptr};
+    OSSet* _notificationServices {nullptr};
+    OSDictionary* _SensorServices {nullptr};
+    const OSSymbol* _deliverNotification {nullptr};
+
+    void dispatchMessage(int message, void* data);
+    void dispatchMessageGated(int* message, void* data);
+    bool notificationHandler(void * refCon, IOService * newService, IONotifier * notifier);
+    void notificationHandlerGated(IOService * newService, IONotifier * notifier);
+
     bool evaluateAvailableMode();
     uint32_t uuid_bitmap {0};
     bool changeMode(int i, bool enable);

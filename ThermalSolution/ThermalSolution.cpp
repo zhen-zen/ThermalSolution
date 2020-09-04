@@ -16,11 +16,37 @@ bool ThermalSolution::start(IOService *provider) {
         return false;
 
     name = dev->getName();
+    DebugLog("Starting\n");
+
     workLoop = IOWorkLoop::workLoop();
     commandGate = IOCommandGate::commandGate(this);
     if (!workLoop || !commandGate || (workLoop->addEventSource(commandGate) != kIOReturnSuccess)) {
-        IOLog("Failed to add commandGate\n");
+        AlwaysLog("Failed to add commandGate\n");
         return false;
+    }
+
+    _deliverNotification = OSSymbol::withCString(kDeliverNotifications);
+    _notificationServices = OSSet::withCapacity(1);
+    OSDictionary * propertyMatch = propertyMatching(_deliverNotification, kOSBooleanTrue);
+    if (propertyMatch) {
+      IOServiceMatchingNotificationHandler notificationHandler = OSMemberFunctionCast(IOServiceMatchingNotificationHandler, this, &ThermalSolution::notificationHandler);
+
+      //
+      // Register notifications for availability of any IOService objects wanting to consume our message events
+      //
+      _publishNotify = addMatchingNotification(gIOFirstPublishNotification,
+                                             propertyMatch,
+                                             notificationHandler,
+                                             this,
+                                             0, 10000);
+
+      _terminateNotify = addMatchingNotification(gIOTerminatedNotification,
+                                               propertyMatch,
+                                               notificationHandler,
+                                               this,
+                                               0, 10000);
+
+      propertyMatch->release();
     }
 
     /* Missing IDSP isn't fatal */
@@ -28,13 +54,18 @@ bool ThermalSolution::start(IOService *provider) {
     evaluateGDDV();
     evaluateODVP();
 
-    IOLog("%s::%s starting\n", getName(), name);
     registerService();
     return true;
 }
 
 void ThermalSolution::stop(IOService *provider) {
-    IOLog("%s::%s stoping\n", getName(), name);
+    DebugLog("Stoping\n");
+
+    _publishNotify->remove();
+    _terminateNotify->remove();
+    _notificationServices->flushCollection();
+    OSSafeReleaseNULL(_notificationServices);
+    OSSafeReleaseNULL(_deliverNotification);
 
     workLoop->removeEventSource(commandGate);
     OSSafeReleaseNULL(commandGate);
@@ -463,7 +494,7 @@ bool ThermalSolution::evaluateGDDV() {
     headerDesc->release();
 
     if (ver == 2) {
-        IOLog("Uncompress not implemented\n");
+        AlwaysLog("Uncompress not implemented\n");
         return true;
     }
 
@@ -543,7 +574,7 @@ bool ThermalSolution::evaluateODVP() {
 
 bool ThermalSolution::changeMode(int i, bool enable) {
     if (!(uuid_bitmap & BIT(i))) {
-        IOLog("Mode %s is not available\n", int3400_thermal_uuids[i]);
+        AlwaysLog("Mode %s is not available\n", int3400_thermal_uuids[i]);
         return false;
     }
 
@@ -581,18 +612,18 @@ bool ThermalSolution::changeMode(int i, bool enable) {
             (rbuf = reinterpret_cast<const UInt32 *>(data->getBytesNoCopy()))) {
             UInt32 error = rbuf[0] & ~BIT(OSC_QUERY_ENABLE);
             if (error & OSC_REQUEST_ERROR)
-                IOLog("_OSC request failed\n");
+                AlwaysLog("_OSC request failed\n");
             if (error & OSC_INVALID_UUID_ERROR)
-                IOLog("_OSC invalid UUID\n");
+                AlwaysLog("_OSC invalid UUID\n");
             if (error & OSC_INVALID_REVISION_ERROR)
-                IOLog("_OSC invalid revision\n");
+                AlwaysLog("_OSC invalid revision\n");
             if (!error || error & OSC_CAPABILITIES_MASK_ERROR)
                 evaluateODVP();
             else
                 ret = kIOReturnInvalid;
         }
     } else {
-        IOLog("_OSC evaluate failed\n");
+        AlwaysLog("_OSC evaluate failed\n");
     }
 
     if (ret != kIOReturnSuccess)
@@ -603,23 +634,34 @@ bool ThermalSolution::changeMode(int i, bool enable) {
 }
 
 IOReturn ThermalSolution::message(UInt32 type, IOService *provider, void *argument) {
-    if (argument) {
-        switch (*(UInt32 *) argument) {
-            case INT3400_THERMAL_TABLE_CHANGED :
-                IOLog("message: provider=%s, thermal table changed\n", provider->getName());
-                break;
+    switch (type) {
+        case kIOACPIMessageDeviceNotification:
+            if (argument) {
+                switch (*(UInt32 *) argument) {
+                    case INT3400_THERMAL_TABLE_CHANGED:
+                        AlwaysLog("message: provider=%s, thermal table changed\n", provider->getName());
+                        break;
 
-            case INT3400_ODVP_CHANGED:
-                IOLog("message: provider=%s, ODVP changed\n", provider->getName());
-                evaluateODVP();
-                break;
+                    case INT3400_ODVP_CHANGED:
+                        AlwaysLog("message: provider=%s, ODVP changed\n", provider->getName());
+                        evaluateODVP();
+                        break;
 
-            default:
-                IOLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
-                break;
-        }
-    } else {
-        IOLog("message: type=%x, provider=%s\n", type, provider->getName());
+                    default:
+                        AlwaysLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
+                        break;
+                }
+            } else {
+                AlwaysLog("message: type=%x, provider=%s\n", type, provider->getName());
+            }
+            break;
+
+        default:
+            if (argument)
+                AlwaysLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
+            else
+                AlwaysLog("message: type=%x, provider=%s\n", type, provider->getName());
+            break;
     }
     return kIOReturnSuccess;
 }
@@ -638,12 +680,56 @@ void ThermalSolution::setPropertiesGated(OSObject* props) {
         if ((dict->getObject(int3400_thermal_uuids[i]))) {
             OSBoolean *value = OSDynamicCast(OSBoolean, dict->getObject(int3400_thermal_uuids[i]));
             if (value == nullptr)
-                IOLog("Invald status\n");
+                AlwaysLog("Invald status\n");
 
             if (changeMode(i, value->getValue()))
-                IOLog("%s mode %s\n", value->getValue() ? "Enabled" : "Disabled", int3400_thermal_uuids[i]);
+                DebugLog("%s mode %s\n", value->getValue() ? "Enabled" : "Disabled", int3400_thermal_uuids[i]);
             return;
         }
     }
-    IOLog("Could not find known policy UUID\n");
+    AlwaysLog("Could not find known policy UUID\n");
+}
+
+void ThermalSolution::dispatchMessageGated(int* message, void* data)
+{
+    OSCollectionIterator* i = OSCollectionIterator::withCollection(_notificationServices);
+
+    if (i) {
+        while (IOService* service = OSDynamicCast(IOService, i->getNextObject())) {
+            service->message(*message, this, data);
+        }
+        i->release();
+    }
+}
+
+void ThermalSolution::dispatchMessage(int message, void* data)
+{
+    if (_notificationServices->getCount() == 0) {
+        AlwaysLog("No available notification consumer\n");
+        return;
+    }
+    commandGate->runAction(OSMemberFunctionCast(IOCommandGate::Action, this, &ThermalSolution::dispatchMessageGated), &message, data);
+}
+
+void ThermalSolution::notificationHandlerGated(IOService *newService, IONotifier *notifier)
+{
+    if (notifier == _publishNotify) {
+        DebugLog("Notification consumer published: %s\n", newService->getName());
+        _notificationServices->setObject(newService);
+        UInt32 type;
+        newService->message(kThermal_getDeviceType, this, &type);
+        if (type == INT3400_THERMAL_VIRTUAL_SENSOR)
+            DebugLog("Sensor consumer published: %s\n", newService->getName());
+    }
+
+    if (notifier == _terminateNotify) {
+        DebugLog("Notification consumer terminated: %s\n", newService->getName());
+        _notificationServices->removeObject(newService);
+    }
+}
+
+bool ThermalSolution::notificationHandler(void *refCon, IOService *newService, IONotifier *notifier)
+{
+    commandGate->runAction(OSMemberFunctionCast(IOCommandGate::Action, this, &ThermalSolution::notificationHandlerGated), newService, notifier);
+    return true;
 }
