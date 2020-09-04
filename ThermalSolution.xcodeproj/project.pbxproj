@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		6F7C2A1D24F98463004D5497 /* ThermalSolution.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */; };
 		6F7C2A1F24F98463004D5497 /* ThermalSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */; };
+		6F9A08E92500D7D900D53B82 /* SensorSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */; };
+		6F9A08EA2500D7D900D53B82 /* SensorSolution.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 6F9A08E82500D7D800D53B82 /* SensorSolution.hpp */; };
 		6FF972FF24F9B6B80094CF2C /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = 6FF972FE24F9B6B70094CF2C /* common.h */; };
 /* End PBXBuildFile section */
 
@@ -17,6 +19,8 @@
 		6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ThermalSolution.hpp; sourceTree = "<group>"; };
 		6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ThermalSolution.cpp; sourceTree = "<group>"; };
 		6F7C2A2024F98463004D5497 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = SensorSolution.cpp; sourceTree = "<group>"; };
+		6F9A08E82500D7D800D53B82 /* SensorSolution.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = SensorSolution.hpp; sourceTree = "<group>"; };
 		6FF972FE24F9B6B70094CF2C /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -53,6 +57,8 @@
 				6FF972FE24F9B6B70094CF2C /* common.h */,
 				6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */,
 				6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */,
+				6F9A08E82500D7D800D53B82 /* SensorSolution.hpp */,
+				6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */,
 				6F7C2A2024F98463004D5497 /* Info.plist */,
 			);
 			path = ThermalSolution;
@@ -67,6 +73,7 @@
 			files = (
 				6F7C2A1D24F98463004D5497 /* ThermalSolution.hpp in Headers */,
 				6FF972FF24F9B6B80094CF2C /* common.h in Headers */,
+				6F9A08EA2500D7D900D53B82 /* SensorSolution.hpp in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,6 +144,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6F9A08E92500D7D900D53B82 /* SensorSolution.cpp in Sources */,
 				6F7C2A1F24F98463004D5497 /* ThermalSolution.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

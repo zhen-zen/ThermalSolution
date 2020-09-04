@@ -33,6 +33,19 @@
 			<key>IOProviderClass</key>
 			<string>IOACPIPlatformDevice</string>
 		</dict>
+		<key>SensorSolution</key>
+		<dict>
+			<key>CFBundleIdentifier</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>IOClass</key>
+			<string>SensorSolution</string>
+			<key>IONameMatch</key>
+			<string>INT3403</string>
+			<key>IOProbeScore</key>
+			<integer>100</integer>
+			<key>IOProviderClass</key>
+			<string>IOACPIPlatformDevice</string>
+		</dict>
 	</dict>
 	<key>OSBundleLibraries</key>
 	<dict>

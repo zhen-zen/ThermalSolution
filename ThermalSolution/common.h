@@ -10,6 +10,21 @@
 #ifndef common_h
 #define common_h
 
+#include <IOKit/IOMessage.h>
+
+#define kDeliverNotifications   "ThermalNotifications"
+
+#define INT3403_TYPE_SENSOR         0x03
+#define INT3403_TYPE_CHARGER        0x0B
+#define INT3403_TYPE_BATTERY        0x0C
+
+enum
+{
+    // Thermal message types
+    kThermal_getDeviceType  = iokit_vendor_specific_msg(900),   // get temperature from sensor (data is UInt32*)
+    kThermal_getTemperature = iokit_vendor_specific_msg(901),   // get temperature from sensor (data is UInt32*)
+};
+
 #ifdef DEBUG
 #define DebugLog(str, ...) do { IOLog("%s::%s " str, getName(), name, ## __VA_ARGS__); } while (0)
 #else
