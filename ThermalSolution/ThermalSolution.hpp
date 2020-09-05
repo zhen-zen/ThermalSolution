@@ -131,6 +131,73 @@ enum adaptive_condition {
     Power_slider
 };
 
+static const char *condition_names[] = {
+        "Invalid",
+        "Default",
+        "Orientation",
+        "Proximity",
+        "Motion",
+        "Dock",
+        "Workload",
+        "Cooling_mode",
+        "Power_source",
+        "Aggregate_power_percentage",
+        "Lid_state",
+        "Platform_type",
+        "Platform_SKU",
+        "Utilisation",
+        "TDP",
+        "Duty_cycle",
+        "Power",
+        "Temperature",
+        "Display_orientation",
+        "Oem0",
+        "Oem1",
+        "Oem2",
+        "Oem3",
+        "Oem4",
+        "Oem5",
+        "PMAX",
+        "PSRC",
+        "ARTG",
+        "CTYP",
+        "PROP",
+        "Unk1",
+        "Unk2",
+        "Battery_state",
+        "Battery_rate",
+        "Battery_remaining",
+        "Battery_voltage",
+        "PBSS",
+        "Battery_cycles",
+        "Battery_last_full",
+        "Power_personality",
+        "Battery_design_capacity",
+        "Screen_state",
+        "AVOL",
+        "ACUR",
+        "AP01",
+        "AP02",
+        "AP10",
+        "Time",
+        "Temperature_without_hysteresis",
+        "Mixed_reality",
+        "User_presence",
+        "RBHF",
+        "VBNL",
+        "CMPP",
+        "Battery_percentage",
+        "Battery_count",
+        "Power_slider"
+};
+
+static const char *comp_strs[] = {
+        "INVALID",
+        "ADAPTIVE_EQUAL",
+        "ADAPTIVE_LESSER_OR_EQUAL",
+        "ADAPTIVE_GREATER_OR_EQUAL"
+};
+
 enum adaptive_operation {
     AND = 0x01,
     FOR

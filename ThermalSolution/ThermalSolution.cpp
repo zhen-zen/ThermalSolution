@@ -8,6 +8,7 @@
 //
 
 #include "ThermalSolution.hpp"
+#include <lzma_stub.h>
 
 OSDefineMetaClassAndStructors(ThermalSolution, IOService)
 
@@ -254,13 +255,31 @@ OSDictionary *ThermalSolution::parseAPCT(const void *data, uint32_t length) {
                     OSDictionary *condition = OSDictionary::withCapacity(1);
 
                     const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
-                    setPropertyNumber(condition, "condition", content[0].value, 64);
-                    setPropertyNumber(condition, "comparison", content[1].value, 64);
+                    if (content[0].value < ARRAY_SIZE(condition_names))
+                        setPropertyString(condition, "condition", condition_names[content[0].value]);
+                    else
+                        setPropertyNumber(condition, "condition", content[0].value, 64);
+                    if (content[1].value < ARRAY_SIZE(comp_strs))
+                        setPropertyString(condition, "condition", comp_strs[content[1].value]);
+                    else
+                        setPropertyNumber(condition, "comparison", content[1].value, 64);
                     setPropertyNumber(condition, "argument", content[2].value, 64);
                     offset += 3 * sizeof(uint64Container);
 
                     if (i < 9) {
-                        setPropertyNumber(condition, "operation", content[3].value, 64);
+                        switch (content[3].value) {
+                            case 1:
+                                setPropertyString(condition, "operation", "AND");
+                                break;
+
+                            case 2:
+                                setPropertyString(condition, "operation", "FOR");
+                                break;
+
+                            default:
+                                setPropertyNumber(condition, "operation", content[3].value, 64);
+                                break;
+                        }
                         offset += sizeof(uint64Container);
                         if (content[3].value == FOR) {
                             setPropertyNumber(condition, "unknown2", content[4].value, 64);
@@ -295,7 +314,10 @@ OSDictionary *ThermalSolution::parseAPCT(const void *data, uint32_t length) {
                     OSDictionary *condition = OSDictionary::withCapacity(1);
 
                     const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
-                    setPropertyNumber(condition, "condition", content[0].value, 64);
+                    if (content[0].value < ARRAY_SIZE(condition_names))
+                        setPropertyString(condition, "condition", condition_names[content[0].value]);
+                    else
+                        setPropertyNumber(condition, "condition", content[0].value, 64);
                     offset += sizeof(uint64Container);
                     const uint64Container *str = reinterpret_cast<const uint64Container *>(offset);
                     offset += sizeof(uint64Container);
@@ -304,12 +326,27 @@ OSDictionary *ThermalSolution::parseAPCT(const void *data, uint32_t length) {
 
                     content = reinterpret_cast<const uint64Container *>(offset);
                     setPropertyNumber(condition, "unknown0", content[0].value, 64);
-                    setPropertyNumber(condition, "comparison", content[1].value, 64);
+                    if (content[1].value < ARRAY_SIZE(comp_strs))
+                        setPropertyString(condition, "condition", comp_strs[content[1].value]);
+                    else
+                        setPropertyNumber(condition, "comparison", content[1].value, 64);
                     setPropertyNumber(condition, "argument", content[2].value, 64);
                     offset += 3 * sizeof(uint64Container);
 
                     if (i < (count->value - 1)) {
-                        setPropertyNumber(condition, "operation", content[3].value, 64);
+                        switch (content[3].value) {
+                            case 1:
+                                setPropertyString(condition, "operation", "AND");
+                                break;
+
+                            case 2:
+                                setPropertyString(condition, "operation", "FOR");
+                                break;
+
+                            default:
+                                setPropertyNumber(condition, "operation", content[3].value, 64);
+                                break;
+                        }
                         offset += sizeof(uint64Container);
                         if (content[3].value == FOR) {
                             setPropertyNumber(condition, "unknown1", content[4].value, 64);
@@ -363,7 +400,10 @@ OSDictionary *ThermalSolution::parseAPPC(const void *data, uint32_t length) {
     while (offset < reinterpret_cast<const char *>(data) + length) {
         OSDictionary *entry = OSDictionary::withCapacity(1);
         const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
-        setPropertyNumber(entry, "condition", content->value, 64);
+        if (content[0].value < ARRAY_SIZE(condition_names))
+            setPropertyString(entry, "condition", condition_names[content[0].value]);
+        else
+            setPropertyNumber(entry, "condition", content[0].value, 64);
         offset += sizeof(uint64Container);
 
         const uint64Container *str = reinterpret_cast<const uint64Container *>(offset);
@@ -550,6 +590,12 @@ bool ThermalSolution::evaluateGDDV() {
             if (val->length < 0x30)
                 setPropertyBytes(keyDesc, "value", buf->getBytesNoCopy(offset, val->length), val->length);
             content = keyDesc;
+#ifdef DEBUG
+        } else {
+            OSDictionary *keyDesc;
+            if ((keyDesc = OSDynamicCast(OSDictionary, content)))
+                setPropertyNumber(keyDesc, "length", val->length, 32);
+#endif
         }
         offset += val->length;
         parent->setObject(name, content);

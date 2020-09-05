@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6F2FEB9E25023A170040820E /* lzma_stub.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F2FEB9D25023A170040820E /* lzma_stub.h */; };
 		6F7C2A1D24F98463004D5497 /* ThermalSolution.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */; };
 		6F7C2A1F24F98463004D5497 /* ThermalSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */; };
 		6F9A08E92500D7D900D53B82 /* SensorSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */; };
@@ -15,6 +16,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		6F2FEB9D25023A170040820E /* lzma_stub.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lzma_stub.h; sourceTree = "<group>"; };
 		6F7C2A1924F98463004D5497 /* ThermalSolution.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThermalSolution.kext; sourceTree = BUILT_PRODUCTS_DIR; };
 		6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ThermalSolution.hpp; sourceTree = "<group>"; };
 		6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ThermalSolution.cpp; sourceTree = "<group>"; };
@@ -55,6 +57,7 @@
 			isa = PBXGroup;
 			children = (
 				6FF972FE24F9B6B70094CF2C /* common.h */,
+				6F2FEB9D25023A170040820E /* lzma_stub.h */,
 				6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */,
 				6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */,
 				6F9A08E82500D7D800D53B82 /* SensorSolution.hpp */,
@@ -73,6 +76,7 @@
 			files = (
 				6F7C2A1D24F98463004D5497 /* ThermalSolution.hpp in Headers */,
 				6FF972FF24F9B6B80094CF2C /* common.h in Headers */,
+				6F2FEB9E25023A170040820E /* lzma_stub.h in Headers */,
 				6F9A08EA2500D7D900D53B82 /* SensorSolution.hpp in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
