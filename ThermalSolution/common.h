@@ -36,6 +36,8 @@ enum
 #endif
 #define AlwaysLog(str, ...) do { IOLog("%s::%s " str, getName(), name, ## __VA_ARGS__); } while (0)
 
+#define ARRAY_SIZE(names) (sizeof(names)/sizeof((names)[0]))
+
 #define BIT(nr) (1U << (nr))
 
 #define getPropertyBoolean(prompt)     \
