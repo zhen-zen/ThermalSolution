@@ -98,4 +98,11 @@ enum
         } \
     } while (0)
 
+#define setPropertyTemp(dict, name, number) \
+    do { \
+        char temp_str[10]; \
+        snprintf(temp_str, 10, "%d.%d℃", number / 10, number % 10); \
+        setPropertyString(dict, name, temp_str); \
+    } while (0)
+
 #endif /* common_h */

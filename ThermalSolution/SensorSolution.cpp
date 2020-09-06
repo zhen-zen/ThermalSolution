@@ -4,6 +4,7 @@
 //  ThermalSolution
 //
 //  Created by Zhen on 2020/9/3.
+//  Copyright © 2020 Zhen. All rights reserved.
 //
 
 #include "SensorSolution.hpp"
@@ -41,6 +42,15 @@ bool SensorSolution::start(IOService *provider) {
             snprintf(Unknown, 11, "Unknown:%2x", type);
             setProperty("Type", Unknown);
             break;
+    }
+
+    if (type == INT3403_TYPE_SENSOR) {
+        tz = new ThermalZone(dev);
+        OSDictionary *value = tz->readTrips();
+        if (value) {
+            setProperty("TZ", value);
+            value->release();
+        }
     }
     setProperty(kDeliverNotifications, kOSBooleanTrue);
     registerService();
@@ -94,4 +104,3 @@ IOReturn SensorSolution::message(UInt32 type, IOService *provider, void *argumen
 
     return kIOReturnSuccess;
 }
-

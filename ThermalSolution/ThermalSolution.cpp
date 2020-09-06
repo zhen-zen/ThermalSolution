@@ -55,6 +55,16 @@ bool ThermalSolution::start(IOService *provider) {
     evaluateGDDV();
     evaluateODVP();
 
+    UInt32 tmp;
+    if (dev->evaluateInteger("_TMP", &tmp) == kIOReturnSuccess) {
+        tz = new ThermalZone(dev);
+        OSDictionary *value = tz->readTrips();
+        if (value) {
+            setProperty("TZ", value);
+            value->release();
+        }
+    }
+
     registerService();
     return true;
 }
@@ -478,13 +488,7 @@ OSDictionary *ThermalSolution::parsePSVT(const void *data, uint32_t length) {
         const uint64Container *content = reinterpret_cast<const uint64Container *>(offset);
         setPropertyNumber(entry, "priority", content[0].value, 64);
         setPropertyNumber(entry, "sample_period", content[1].value, 64);
-
-        char *temp = new char[10];
-        SInt64 celsius = content[2].value - 2732;
-        snprintf(temp, 10, "%lld.%lld℃", celsius / 10, celsius % 10);
-        setPropertyString(entry, "temp", temp);
-        delete [] temp;
-
+        setPropertyTemp(entry, "temp", acpi_deci_kelvin_to_deci_celsius((UInt32)content[2].value));
         setPropertyNumber(entry, "domain", content[3].value, 64);
         setPropertyNumber(entry, "control_knob", content[4].value, 64);
 

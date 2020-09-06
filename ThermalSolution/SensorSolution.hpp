@@ -4,14 +4,16 @@
 //  ThermalSolution
 //
 //  Created by Zhen on 2020/9/3.
+//  Copyright © 2020 Zhen. All rights reserved.
 //
 
 #ifndef SensorSolution_hpp
 #define SensorSolution_hpp
 
-#include <common.h>
 #include <IOKit/acpi/IOACPIPlatformDevice.h>
 #include <IOKit/IOService.h>
+#include "common.h"
+#include "ThermalZone.hpp"
 
 // from linux/drivers/thermal/intel/int340x_thermal/int3403_thermal.c
 
@@ -30,6 +32,8 @@ class SensorSolution : public IOService {
     IOACPIPlatformDevice *dev {nullptr};
 
     UInt32 type {0};
+
+    ThermalZone *tz {nullptr};
 
 public:
     bool start(IOService *provider) APPLE_KEXT_OVERRIDE;

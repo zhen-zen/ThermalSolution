@@ -14,6 +14,7 @@
 #include <IOKit/IOService.h>
 #include <IOKit/acpi/IOACPIPlatformDevice.h>
 #include "common.h"
+#include "ThermalZone.hpp"
 
 #define DPTF_OSC_REVISION 1
 
@@ -266,6 +267,8 @@ class ThermalSolution : public IOService {
 
     bool evaluateGDDV();
     bool evaluateODVP();
+
+    ThermalZone *tz {nullptr};
 
     void setPropertiesGated(OSObject* props);
 
