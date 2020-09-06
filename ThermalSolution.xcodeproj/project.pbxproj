@@ -14,6 +14,8 @@
 		6F7C2A1F24F98463004D5497 /* ThermalSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */; };
 		6F9A08E92500D7D900D53B82 /* SensorSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */; };
 		6F9A08EA2500D7D900D53B82 /* SensorSolution.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 6F9A08E82500D7D800D53B82 /* SensorSolution.hpp */; };
+		6FA555BD25036358009BEAB4 /* ProcessorSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6FA555BB25036358009BEAB4 /* ProcessorSolution.cpp */; };
+		6FA555BE25036358009BEAB4 /* ProcessorSolution.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 6FA555BC25036358009BEAB4 /* ProcessorSolution.hpp */; };
 		6FF972FF24F9B6B80094CF2C /* common.h in Headers */ = {isa = PBXBuildFile; fileRef = 6FF972FE24F9B6B70094CF2C /* common.h */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +29,8 @@
 		6F7C2A2024F98463004D5497 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = SensorSolution.cpp; sourceTree = "<group>"; };
 		6F9A08E82500D7D800D53B82 /* SensorSolution.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = SensorSolution.hpp; sourceTree = "<group>"; };
+		6FA555BB25036358009BEAB4 /* ProcessorSolution.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ProcessorSolution.cpp; sourceTree = "<group>"; };
+		6FA555BC25036358009BEAB4 /* ProcessorSolution.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ProcessorSolution.hpp; sourceTree = "<group>"; };
 		6FF972FE24F9B6B70094CF2C /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -69,6 +73,8 @@
 				6F9A08E82500D7D800D53B82 /* SensorSolution.hpp */,
 				6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */,
 				6F7C2A2024F98463004D5497 /* Info.plist */,
+				6FA555BC25036358009BEAB4 /* ProcessorSolution.hpp */,
+				6FA555BB25036358009BEAB4 /* ProcessorSolution.cpp */,
 			);
 			path = ThermalSolution;
 			sourceTree = "<group>";
@@ -84,6 +90,7 @@
 				6F7C2A1D24F98463004D5497 /* ThermalSolution.hpp in Headers */,
 				6FF972FF24F9B6B80094CF2C /* common.h in Headers */,
 				6F2FEB9E25023A170040820E /* lzma_stub.h in Headers */,
+				6FA555BE25036358009BEAB4 /* ProcessorSolution.hpp in Headers */,
 				6F9A08EA2500D7D900D53B82 /* SensorSolution.hpp in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -157,6 +164,7 @@
 			files = (
                 6FA555C125045393009BEAB4 /* ThermalZone.cpp in Sources */,
 				6F9A08E92500D7D900D53B82 /* SensorSolution.cpp in Sources */,
+				6FA555BD25036358009BEAB4 /* ProcessorSolution.cpp in Sources */,
 				6F7C2A1F24F98463004D5497 /* ThermalSolution.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
