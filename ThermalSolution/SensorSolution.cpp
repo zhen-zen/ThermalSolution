@@ -84,7 +84,7 @@ IOReturn SensorSolution::message(UInt32 type, IOService *provider, void *argumen
                         break;
 
                     case INT3403_THERMAL_EVENT:
-                        AlwaysLog("ACPI notification: thermal event\n");
+                        DebugLog("ACPI notification: thermal event\n");
                         break;
 
                     default:
