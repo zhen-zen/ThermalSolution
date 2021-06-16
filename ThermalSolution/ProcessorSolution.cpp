@@ -17,7 +17,7 @@ bool ProcessorSolution::start(IOService *provider) {
         return false;
 
     name = dev->getName();
-    DebugLog("Starting\n");
+    DebugLog("Starting");
 
     if (adev->evaluateInteger("PTYP", &type) != kIOReturnSuccess ||
         type != INT3401_TYPE_PROCESSOR)
@@ -138,11 +138,11 @@ IOReturn ProcessorSolution::message(UInt32 type, IOService *provider, void *argu
             if (argument) {
                 switch (*(UInt32 *) argument) {
                     case PROC_POWER_CAPABILITY_CHANGED:
-                        AlwaysLog("ACPI notification: processor power capability changed\n");
+                        AlwaysLog("ACPI notification: processor power capability changed");
                         break;
 
                     default:
-                        AlwaysLog("Unknown ACPI notification: argument=0x%04x\n", *((UInt32 *) argument));
+                        AlwaysLog("Unknown ACPI notification: argument=0x%04x", *((UInt32 *) argument));
                         break;
                 }
             }
@@ -150,9 +150,9 @@ IOReturn ProcessorSolution::message(UInt32 type, IOService *provider, void *argu
 
         default:
             if (argument)
-                AlwaysLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
+                AlwaysLog("message: type=%x, provider=%s, argument=0x%04x", type, provider->getName(), *((UInt32 *) argument));
             else
-                AlwaysLog("message: type=%x, provider=%s\n", type, provider->getName());
+                AlwaysLog("message: type=%x, provider=%s", type, provider->getName());
             break;
     }
 

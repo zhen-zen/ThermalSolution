@@ -16,7 +16,7 @@ bool SensorSolution::start(IOService *provider) {
         return false;
 
     name = dev->getName();
-    DebugLog("Starting\n");
+    DebugLog("Starting");
 
     UInt32 tmp;
     if (dev->evaluateInteger("_TMP", &tmp) == kIOReturnSuccess)
@@ -76,19 +76,19 @@ IOReturn SensorSolution::message(UInt32 type, IOService *provider, void *argumen
             if (argument) {
                 switch (*(UInt32 *) argument) {
                     case INT3403_PERF_CHANGED_EVENT:
-                        AlwaysLog("ACPI notification: performance changed\n");
+                        AlwaysLog("ACPI notification: performance changed");
                         break;
 
                     case INT3403_PERF_TRIP_POINT_CHANGED:
-                        AlwaysLog("ACPI notification: performance trip point changed\n");
+                        AlwaysLog("ACPI notification: performance trip point changed");
                         break;
 
                     case INT3403_THERMAL_EVENT:
-                        DebugLog("ACPI notification: thermal event\n");
+                        DebugLog("ACPI notification: thermal event");
                         break;
 
                     default:
-                        AlwaysLog("Unknown ACPI notification: argument=0x%04x\n", *((UInt32 *) argument));
+                        AlwaysLog("Unknown ACPI notification: argument=0x%04x", *((UInt32 *) argument));
                         break;
                 }
             }
@@ -96,9 +96,9 @@ IOReturn SensorSolution::message(UInt32 type, IOService *provider, void *argumen
 
         default:
             if (argument)
-                AlwaysLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
+                AlwaysLog("message: type=%x, provider=%s, argument=0x%04x", type, provider->getName(), *((UInt32 *) argument));
             else
-                AlwaysLog("message: type=%x, provider=%s\n", type, provider->getName());
+                AlwaysLog("message: type=%x, provider=%s", type, provider->getName());
             break;
     }
 

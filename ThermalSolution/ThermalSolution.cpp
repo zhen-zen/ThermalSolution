@@ -17,12 +17,12 @@ bool ThermalSolution::start(IOService *provider) {
         return false;
 
     name = dev->getName();
-    DebugLog("Starting\n");
+    DebugLog("Starting");
 
     workLoop = IOWorkLoop::workLoop();
     commandGate = IOCommandGate::commandGate(this);
     if (!workLoop || !commandGate || (workLoop->addEventSource(commandGate) != kIOReturnSuccess)) {
-        AlwaysLog("Failed to add commandGate\n");
+        AlwaysLog("Failed to add commandGate");
         return false;
     }
 
@@ -70,7 +70,7 @@ bool ThermalSolution::start(IOService *provider) {
 }
 
 void ThermalSolution::stop(IOService *provider) {
-    DebugLog("Stoping\n");
+    DebugLog("Stoping");
 
     _publishNotify->remove();
     _terminateNotify->remove();
@@ -538,7 +538,7 @@ bool ThermalSolution::evaluateGDDV() {
     headerDesc->release();
 
     if (ver == 2) {
-        AlwaysLog("Uncompress not implemented\n");
+        AlwaysLog("Uncompress not implemented");
         return true;
     }
 
@@ -624,7 +624,7 @@ bool ThermalSolution::evaluateODVP() {
 
 bool ThermalSolution::changeMode(int i, bool enable) {
     if (!(uuid_bitmap & BIT(i))) {
-        AlwaysLog("Mode %s is not available\n", int3400_thermal_uuids[i]);
+        AlwaysLog("Mode %s is not available", int3400_thermal_uuids[i]);
         return false;
     }
 
@@ -662,18 +662,18 @@ bool ThermalSolution::changeMode(int i, bool enable) {
             (rbuf = reinterpret_cast<const UInt32 *>(data->getBytesNoCopy()))) {
             UInt32 error = rbuf[0] & ~BIT(OSC_QUERY_ENABLE);
             if (error & OSC_REQUEST_ERROR)
-                AlwaysLog("_OSC request failed\n");
+                AlwaysLog("_OSC request failed");
             if (error & OSC_INVALID_UUID_ERROR)
-                AlwaysLog("_OSC invalid UUID\n");
+                AlwaysLog("_OSC invalid UUID");
             if (error & OSC_INVALID_REVISION_ERROR)
-                AlwaysLog("_OSC invalid revision\n");
+                AlwaysLog("_OSC invalid revision");
             if (!error || error & OSC_CAPABILITIES_MASK_ERROR)
                 evaluateODVP();
             else
                 ret = kIOReturnInvalid;
         }
     } else {
-        AlwaysLog("_OSC evaluate failed\n");
+        AlwaysLog("_OSC evaluate failed");
     }
 
     if (ret != kIOReturnSuccess)
@@ -689,16 +689,16 @@ IOReturn ThermalSolution::message(UInt32 type, IOService *provider, void *argume
             if (argument) {
                 switch (*(UInt32 *) argument) {
                     case INT3400_THERMAL_TABLE_CHANGED:
-                        AlwaysLog("ACPI notification: thermal table changed\n");
+                        AlwaysLog("ACPI notification: thermal table changed");
                         break;
 
                     case INT3400_ODVP_CHANGED:
-                        AlwaysLog("ACPI notification: ODVP changed\n");
+                        AlwaysLog("ACPI notification: ODVP changed");
                         evaluateODVP();
                         break;
 
                     default:
-                        AlwaysLog("Unknown ACPI notification: argument=0x%04x\n", *((UInt32 *) argument));
+                        AlwaysLog("Unknown ACPI notification: argument=0x%04x", *((UInt32 *) argument));
                         break;
                 }
             }
@@ -706,9 +706,9 @@ IOReturn ThermalSolution::message(UInt32 type, IOService *provider, void *argume
 
         default:
             if (argument)
-                AlwaysLog("message: type=%x, provider=%s, argument=0x%04x\n", type, provider->getName(), *((UInt32 *) argument));
+                AlwaysLog("message: type=%x, provider=%s, argument=0x%04x", type, provider->getName(), *((UInt32 *) argument));
             else
-                AlwaysLog("message: type=%x, provider=%s\n", type, provider->getName());
+                AlwaysLog("message: type=%x, provider=%s", type, provider->getName());
             break;
     }
     return kIOReturnSuccess;
@@ -728,14 +728,14 @@ void ThermalSolution::setPropertiesGated(OSObject* props) {
         if ((dict->getObject(int3400_thermal_uuids[i]))) {
             OSBoolean *value = OSDynamicCast(OSBoolean, dict->getObject(int3400_thermal_uuids[i]));
             if (value == nullptr)
-                AlwaysLog("Invald status\n");
+                AlwaysLog("Invald status");
 
             if (changeMode(i, value->getValue()))
-                DebugLog("%s mode %s\n", value->getValue() ? "Enabled" : "Disabled", int3400_thermal_uuids[i]);
+                DebugLog("%s mode %s", value->getValue() ? "Enabled" : "Disabled", int3400_thermal_uuids[i]);
             return;
         }
     }
-    AlwaysLog("Could not find known policy UUID\n");
+    AlwaysLog("Could not find known policy UUID");
 }
 
 void ThermalSolution::dispatchMessageGated(int* message, void* data)
@@ -753,7 +753,7 @@ void ThermalSolution::dispatchMessageGated(int* message, void* data)
 void ThermalSolution::dispatchMessage(int message, void* data)
 {
     if (_notificationServices->getCount() == 0) {
-        AlwaysLog("No available notification consumer\n");
+        AlwaysLog("No available notification consumer");
         return;
     }
     commandGate->runAction(OSMemberFunctionCast(IOCommandGate::Action, this, &ThermalSolution::dispatchMessageGated), &message, data);
@@ -762,16 +762,16 @@ void ThermalSolution::dispatchMessage(int message, void* data)
 void ThermalSolution::notificationHandlerGated(IOService *newService, IONotifier *notifier)
 {
     if (notifier == _publishNotify) {
-        DebugLog("Notification consumer published: %s\n", newService->getName());
+        DebugLog("Notification consumer published: %s", newService->getName());
         _notificationServices->setObject(newService);
         UInt32 type;
         newService->message(kThermal_getDeviceType, this, &type);
         if (type == INT3400_THERMAL_VIRTUAL_SENSOR)
-            DebugLog("Sensor consumer published: %s\n", newService->getName());
+            DebugLog("Sensor consumer published: %s", newService->getName());
     }
 
     if (notifier == _terminateNotify) {
-        DebugLog("Notification consumer terminated: %s\n", newService->getName());
+        DebugLog("Notification consumer terminated: %s", newService->getName());
         _notificationServices->removeObject(newService);
     }
 }

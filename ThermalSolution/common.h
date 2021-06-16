@@ -30,11 +30,11 @@ enum
 };
 
 #ifdef DEBUG
-#define DebugLog(str, ...) do { IOLog("%s::%s " str, getName(), name, ## __VA_ARGS__); } while (0)
+#define DebugLog(str, ...) do { IOLog("%s::%s " str "\n", getName(), name, ## __VA_ARGS__); } while (0)
 #else
 #define DebugLog(str, ...) do { } while (0)
 #endif
-#define AlwaysLog(str, ...) do { IOLog("%s::%s " str, getName(), name, ## __VA_ARGS__); } while (0)
+#define AlwaysLog(str, ...) do { IOLog("%s::%s " str "\n", getName(), name, ## __VA_ARGS__); } while (0)
 
 #define ARRAY_SIZE(names) (sizeof(names)/sizeof((names)[0]))
 

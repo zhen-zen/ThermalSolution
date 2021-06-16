@@ -14,12 +14,12 @@ bool LowPowerSolution::start(IOService *provider) {
         return false;
 
     name = dev->getName();
-    DebugLog("Starting\n");
+    DebugLog("Starting");
 
     workLoop = IOWorkLoop::workLoop();
     commandGate = IOCommandGate::commandGate(this);
     if (!workLoop || !commandGate || (workLoop->addEventSource(commandGate) != kIOReturnSuccess)) {
-        AlwaysLog("Failed to add commandGate\n");
+        AlwaysLog("Failed to add commandGate");
         return false;
     }
 
@@ -77,7 +77,7 @@ bool LowPowerSolution::start(IOService *provider) {
 }
 
 void LowPowerSolution::stop(IOService *provider) {
-    DebugLog("Stoping\n");
+    DebugLog("Stoping");
 
     workLoop->removeEventSource(commandGate);
     OSSafeReleaseNULL(commandGate);
