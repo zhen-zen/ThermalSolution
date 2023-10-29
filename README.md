@@ -18,3 +18,5 @@ Currently available functions:
   The definition for the bits can be found in [LowPowerSolution.hpp](https://github.com/zhen-zen/ThermalSolution/blob/master/ThermalSolution/LowPowerSolution.hpp)
 
 - Read temperature manually from `INT3403` devices
+  
+   You can test available sensors by sending `ioio -s SensorSolution update 0` and check `dmesg`.
