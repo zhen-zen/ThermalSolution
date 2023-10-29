@@ -71,6 +71,8 @@
 			<integer>100</integer>
 			<key>IOProviderClass</key>
 			<string>IOService</string>
+			<key>EnabledStates</key>
+			<data>AA==</data>
 		</dict>
 	</dict>
 	<key>OSBundleLibraries</key>

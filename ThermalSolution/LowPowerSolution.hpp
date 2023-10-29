@@ -25,10 +25,11 @@
 #define LPS0_DSM_ENTRY       5
 #define LPS0_DSM_EXIT        6
 
-#define kIOPMNumberPowerStates     2
+#define kIOPMNumberPowerStates     3
 
 static IOPMPowerState IOPMPowerStates[kIOPMNumberPowerStates] = {
     {1, kIOServicePowerCapabilityOff, kIOServicePowerCapabilityOff, kIOServicePowerCapabilityOff, 0, 0, 0, 0, 0, 0, 0, 0},
+    {1, kIOServicePowerCapabilityLow, kIOServicePowerCapabilityLow, kIOServicePowerCapabilityLow, 0, 0, 0, 0, 0, 0, 0, 0},
     {1, kIOServicePowerCapabilityOn, kIOServicePowerCapabilityOn, kIOServicePowerCapabilityOn, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 

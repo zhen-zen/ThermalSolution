@@ -32,6 +32,9 @@ bool LowPowerSolution::start(IOService *provider) {
     setProperty("Capability", functionMask, 8);
     OSSafeReleaseNULL(result);
 
+    if ((data = OSDynamicCast(OSData, getProperty("EnabledStates"))))
+        functionMask = functionMask & *(reinterpret_cast<UInt8 const*>(data->getBytesNoCopy()));
+
     OSArray *array;
     if ((evaluateDSM(LPS0_DSM_CONSTRAINT, &result) == kIOReturnSuccess) &&
         (array = OSDynamicCast(OSArray, result))) {
@@ -41,25 +44,62 @@ bool LowPowerSolution::start(IOService *provider) {
             while (OSArray *entry = OSDynamicCast(OSArray, iter->getNextObject())) {
                 OSString *name = OSDynamicCast(OSString, entry->getObject(0));
                 OSNumber *enabled = OSDynamicCast(OSNumber, entry->getObject(1));
-#ifndef DEBUG
                 if (!enabled->unsigned8BitValue())
                     continue;
-#endif
                 OSArray *detail = OSDynamicCast(OSArray, entry->getObject(2));
                 if (name && enabled && detail) {
                     OSNumber *revision = OSDynamicCast(OSNumber, detail->getObject(0));
                     OSArray *state = OSDynamicCast(OSArray, detail->getObject(2));
 
                     OSDictionary *dict = OSDictionary::withCapacity(3);
-                    dict->setObject("Device Enabled", enabled);
+                    if (enabled->unsigned8BitValue() != 1)                    dict->setObject("Device Enabled", enabled);
                     if (revision->unsigned8BitValue() != 0)
                         dict->setObject("Revision", revision);
-                    dict->setObject("State", state);
+                    if (state) {
+                        OSDictionary *constraint = OSDictionary::withCapacity(3);
+                        constraint->setObject("LPI UID", state->getObject(0));
+                        constraint->setObject("Minimum D-state", state->getObject(1));
+                        constraint->setObject("Minimum device-specific state", state->getObject(2));
+                        dict->setObject("State", constraint);
+                        constraint->release();
+                    }
                     constraints->setObject(name->getCStringNoCopy(), dict);
                     dict->release();
                 }
             }
             setProperty("Constraints", constraints);
+            constraints->release();
+            iter->release();
+        }
+    }
+    OSSafeReleaseNULL(result);
+
+    if ((evaluateDSM(LPS0_DSM_CRASH_DUMP, &result) == kIOReturnSuccess) &&
+        (array = OSDynamicCast(OSArray, result))) {
+        OSCollectionIterator* iter = OSCollectionIterator::withCollection(array);
+        if (iter) {
+            OSDictionary *constraints = OSDictionary::withCapacity(1);
+            while (OSArray *entry = OSDynamicCast(OSArray, iter->getNextObject())) {
+                OSString *name = OSDynamicCast(OSString, entry->getObject(0));
+                OSArray *detail = OSDynamicCast(OSArray, entry->getObject(1));
+                if (name && detail) {
+                    OSDictionary *dict = OSDictionary::withCapacity(2);
+                    dict->setObject("GAS", detail->getObject(0));
+                    OSArray *operation = OSDynamicCast(OSArray, detail->getObject(1));
+                    if (operation) {
+                        OSDictionary *control = OSDictionary::withCapacity(4);
+                        control->setObject("ANDMask", operation->getObject(0));
+                        control->setObject("Value", operation->getObject(1));
+                        control->setObject("Trigger", operation->getObject(2));
+                        control->setObject("Delay", operation->getObject(3));
+                        dict->setObject("Operation", control);
+                        control->release();
+                    }
+                    constraints->setObject(name->getCStringNoCopy(), dict);
+                    dict->release();
+                }
+            }
+            setProperty("Crash Dump", constraints);
             constraints->release();
             iter->release();
         }
@@ -114,29 +154,35 @@ void LowPowerSolution::setPropertiesGated(OSObject* props) {
             AlwaysLog("Failed to evaluate _DSM index %d", index->unsigned32BitValue());
         }
     }
+    if ((index = OSDynamicCast(OSNumber, dict->getObject("SetCap"))) != nullptr)
+        functionMask = index->unsigned8BitValue();
 }
 
 IOReturn LowPowerSolution::setPowerState(unsigned long powerStateOrdinal, IOService * whatDevice) {
-    DebugLog("powerState %ld : %s", powerStateOrdinal, powerStateOrdinal ? "on" : "off");
     if (whatDevice != this)
         return kIOReturnInvalid;
-    if (!ready)
+    if (!(ready && functionMask & (BIT(LPS0_DSM_ENTRY) | BIT(LPS0_DSM_EXIT))))
         return kIOPMAckImplied;
 
+    DebugLog("powerState %ld : %s", powerStateOrdinal, powerStateOrdinal ? "on" : "off");
+
     IOReturn ret;
-    if (functionMask & (BIT(LPS0_DSM_ENTRY) | BIT(LPS0_DSM_EXIT))) {
-        if (powerStateOrdinal) {
-            ret = evaluateDSM(LPS0_DSM_EXIT, nullptr);
-            DebugLog("LPS0_DSM_EXIT 0x%x", ret);
-            ret = evaluateDSM(LPS0_DSM_SCREEN_ON, nullptr);
-            DebugLog("LPS0_DSM_SCREEN_ON 0x%x", ret);
-        } else {
+    switch (powerStateOrdinal) {
+        case 0:
             ret = evaluateDSM(LPS0_DSM_SCREEN_OFF, nullptr);
             DebugLog("LPS0_DSM_SCREEN_OFF 0x%x", ret);
             ret = evaluateDSM(LPS0_DSM_ENTRY, nullptr);
             DebugLog("LPS0_DSM_ENTRY 0x%x", ret);
-        }
+            break;
+
+        default:
+            ret = evaluateDSM(LPS0_DSM_EXIT, nullptr);
+            DebugLog("LPS0_DSM_EXIT 0x%x", ret);
+            ret = evaluateDSM(LPS0_DSM_SCREEN_ON, nullptr);
+            DebugLog("LPS0_DSM_SCREEN_ON 0x%x", ret);
+            break;
     }
+
     return kIOPMAckImplied;
 }
 

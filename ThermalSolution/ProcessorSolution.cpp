@@ -148,6 +148,7 @@ IOReturn ProcessorSolution::message(UInt32 type, IOService *provider, void *argu
             }
             break;
 
+        case kIOMessageDeviceWillPowerOff:
         default:
             if (argument)
                 AlwaysLog("message: type=%x, provider=%s, argument=0x%04x", type, provider->getName(), *((UInt32 *) argument));
