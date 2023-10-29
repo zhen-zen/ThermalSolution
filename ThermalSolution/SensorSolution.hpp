@@ -11,6 +11,7 @@
 #define SensorSolution_hpp
 
 #include <IOKit/acpi/IOACPIPlatformDevice.h>
+#include <IOKit/IOCommandGate.h>
 #include <IOKit/IOService.h>
 #include "common.h"
 #include "ThermalZone.hpp"
@@ -28,16 +29,24 @@ class SensorSolution : public IOService {
     typedef IOService super;
     OSDeclareDefaultStructors(SensorSolution)
 
+    IOWorkLoop *workLoop {nullptr};
+    IOCommandGate *commandGate {nullptr};
+
     const char *name;
     IOACPIPlatformDevice *dev {nullptr};
 
+    UInt32 tmp {DEFAULT_TEMPERATURE};
     UInt32 type {0};
 
     ThermalZone *tz {nullptr};
 
+    void setPropertiesGated(OSObject* props);
+
 public:
     bool start(IOService *provider) APPLE_KEXT_OVERRIDE;
+    void stop(IOService *provider) APPLE_KEXT_OVERRIDE;
 
     IOReturn message(UInt32 type, IOService *provider, void *argument) APPLE_KEXT_OVERRIDE;
+    IOReturn setProperties(OSObject *props) APPLE_KEXT_OVERRIDE;
 };
 #endif /* SensorSolution_hpp */
