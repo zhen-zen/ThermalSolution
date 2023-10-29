@@ -36,7 +36,7 @@ static inline long deci_kelvin_to_celsius(long t)
     return deci_kelvin_to_millicelsius(t) / MILLIDEGREE_PER_DEGREE;
 }
 
-static inline UInt32 acpi_deci_kelvin_to_deci_celsius(UInt32 t)
+static inline SInt32 acpi_deci_kelvin_to_deci_celsius(UInt32 t)
 {
     return t + ACPI_ABSOLUTE_ZERO_DECI_CELSIUS;
 }

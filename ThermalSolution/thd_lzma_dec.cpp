@@ -1,12 +1,20 @@
+//  SPDX-License-Identifier: GPL-2.0-only
+//
+//  thd_lzma_dec.cpp
+//  intel/thermal_daemon
+//
+//  Created by Hao Song on 2021/12/31.
+//  Copyright © 2021 Intel. All rights reserved.
+//
 
-#include <errno.h>
-#include <inttypes.h>
+//#include <errno.h>
+//#include <inttypes.h>
 //#include <lzma.h>
-#include <linux/input.h>
+//#include <linux/input.h>
 #include <sys/types.h>
 #include "LzmaDec.h"
-#include "thd_common.h"
-
+#include <IOKit/IOLib.h>
+//#include "thd_common.h"
 
 void *MyAlloc(size_t size)
 {
@@ -19,20 +27,20 @@ void *MyAlloc(size_t size)
     return p;
   }
   #else
-  return malloc(size);
+  return IOMalloc(size);
   #endif
 }
 
-void MyFree(void *address)
+void MyFree(void *address, size_t size)
 {
   //PRINT_FREE("Free    ", g_allocCount, address);
 
-  free(address);
+  IOFree(address, size);
 }
 #define UNUSED_VAR(x) (void)x;
 
 static void *SzAlloc(ISzAllocPtr p, size_t size) { UNUSED_VAR(p); return MyAlloc(size); }
-static void SzFree(ISzAllocPtr p, void *address) { UNUSED_VAR(p); MyFree(address); }
+static void SzFree(ISzAllocPtr p, void *address, size_t size) { UNUSED_VAR(p); MyFree(address, size); }
 const ISzAlloc g_Alloc = { SzAlloc, SzFree };
 
 // Standard LZMA File Header
@@ -71,7 +79,7 @@ int  lzma_decompress(
         size_t srcLen
 )
 {
-        int rc = THD_ERROR;
+        int rc = SZ_ERROR_FAIL;
         struct LzmaHeader *header = NULL;
 
         // NULL dest = Return Required Buffer Size
@@ -83,10 +91,10 @@ int  lzma_decompress(
                 if ((memcmp(header->properties, encoded_signature, sizeof(encoded_signature)) == 0) &&
                         (header->original_size > 0 && header->original_size != (unsigned long long)(-1))) {
                         *destLen = (size_t)header->original_size;
-                        rc = 0;
+                        rc = SZ_OK;
                 }
                 else {
-                        rc = THD_ERROR;
+                        rc = SZ_ERROR_FAIL;
                 }
         }
         else if (dest && destLen && src && srcLen > sizeof(*header)) {
@@ -107,12 +115,12 @@ int  lzma_decompress(
 
                 // Validate Data not Truncated since LzmaDecode returns OK if destLen too small
                 if (*destLen < header->original_size) {
-                        rc = THD_ERROR;
+                        rc = SZ_ERROR_FAIL;
                 }
                 // Bounds Check
                 if (*destLen > LZMA_MAX_COMPRESSED_SIZE) {
                         *destLen = LZMA_MAX_COMPRESSED_SIZE;
-                        rc = THD_ERROR;
+                        rc = SZ_ERROR_FAIL;
                 }
         }
         return rc;

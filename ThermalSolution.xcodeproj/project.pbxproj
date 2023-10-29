@@ -9,6 +9,11 @@
 /* Begin PBXBuildFile section */
 		6F1495EE2582082D00A3BA83 /* libkmod.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6F1495ED2582082D00A3BA83 /* libkmod.a */; };
 		6F2FEB9E25023A170040820E /* lzma_stub.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F2FEB9D25023A170040820E /* lzma_stub.h */; };
+		6F5325882A9ABAA700E44980 /* thd_lzma_dec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F5325832A9ABAA700E44980 /* thd_lzma_dec.cpp */; };
+		6F5325892A9ABAA700E44980 /* LzmaDec.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F5325842A9ABAA700E44980 /* LzmaDec.h */; };
+		6F53258A2A9ABAA700E44980 /* 7zTypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F5325852A9ABAA700E44980 /* 7zTypes.h */; };
+		6F53258B2A9ABAA700E44980 /* thd_lzma_dec.h in Headers */ = {isa = PBXBuildFile; fileRef = 6F5325862A9ABAA700E44980 /* thd_lzma_dec.h */; };
+		6F53258C2A9ABAA700E44980 /* LzmaDec.c in Sources */ = {isa = PBXBuildFile; fileRef = 6F5325872A9ABAA700E44980 /* LzmaDec.c */; };
 		6F7C2A1D24F98463004D5497 /* ThermalSolution.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */; };
 		6F7C2A1F24F98463004D5497 /* ThermalSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */; };
 		6F9A08E92500D7D900D53B82 /* SensorSolution.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6F9A08E72500D7D800D53B82 /* SensorSolution.cpp */; };
@@ -25,6 +30,11 @@
 /* Begin PBXFileReference section */
 		6F1495ED2582082D00A3BA83 /* libkmod.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libkmod.a; path = MacKernelSDK/Library/x86_64/libkmod.a; sourceTree = "<group>"; };
 		6F2FEB9D25023A170040820E /* lzma_stub.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = lzma_stub.h; sourceTree = "<group>"; };
+		6F5325832A9ABAA700E44980 /* thd_lzma_dec.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = thd_lzma_dec.cpp; sourceTree = "<group>"; };
+		6F5325842A9ABAA700E44980 /* LzmaDec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LzmaDec.h; sourceTree = "<group>"; };
+		6F5325852A9ABAA700E44980 /* 7zTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = 7zTypes.h; sourceTree = "<group>"; };
+		6F5325862A9ABAA700E44980 /* thd_lzma_dec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = thd_lzma_dec.h; sourceTree = "<group>"; };
+		6F5325872A9ABAA700E44980 /* LzmaDec.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LzmaDec.c; sourceTree = "<group>"; };
 		6F7C2A1924F98463004D5497 /* ThermalSolution.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ThermalSolution.kext; sourceTree = BUILT_PRODUCTS_DIR; };
 		6F7C2A1C24F98463004D5497 /* ThermalSolution.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = ThermalSolution.hpp; sourceTree = "<group>"; };
 		6F7C2A1E24F98463004D5497 /* ThermalSolution.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ThermalSolution.cpp; sourceTree = "<group>"; };
@@ -80,6 +90,11 @@
 		6F7C2A1B24F98463004D5497 /* ThermalSolution */ = {
 			isa = PBXGroup;
 			children = (
+				6F5325852A9ABAA700E44980 /* 7zTypes.h */,
+				6F5325872A9ABAA700E44980 /* LzmaDec.c */,
+				6F5325842A9ABAA700E44980 /* LzmaDec.h */,
+				6F5325832A9ABAA700E44980 /* thd_lzma_dec.cpp */,
+				6F5325862A9ABAA700E44980 /* thd_lzma_dec.h */,
 				6FF972FE24F9B6B70094CF2C /* common.h */,
 				6F2FEB9D25023A170040820E /* lzma_stub.h */,
 				6FA555C025045393009BEAB4 /* ThermalZone.hpp */,
@@ -104,13 +119,16 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6F53258A2A9ABAA700E44980 /* 7zTypes.h in Headers */,
 				6FA555C225045393009BEAB4 /* ThermalZone.hpp in Headers */,
 				6F9C2A26267868350006ED84 /* LowPowerSolution.hpp in Headers */,
 				6F7C2A1D24F98463004D5497 /* ThermalSolution.hpp in Headers */,
+				6F53258B2A9ABAA700E44980 /* thd_lzma_dec.h in Headers */,
 				6FF972FF24F9B6B80094CF2C /* common.h in Headers */,
 				6F2FEB9E25023A170040820E /* lzma_stub.h in Headers */,
 				6FA555BE25036358009BEAB4 /* ProcessorSolution.hpp in Headers */,
 				6F9A08EA2500D7D900D53B82 /* SensorSolution.hpp in Headers */,
+				6F5325892A9ABAA700E44980 /* LzmaDec.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -185,7 +203,9 @@
 				6F9A08E92500D7D900D53B82 /* SensorSolution.cpp in Sources */,
 				6FA555BD25036358009BEAB4 /* ProcessorSolution.cpp in Sources */,
 				6F7C2A1F24F98463004D5497 /* ThermalSolution.cpp in Sources */,
+				6F53258C2A9ABAA700E44980 /* LzmaDec.c in Sources */,
 				6F9C2A25267868350006ED84 /* LowPowerSolution.cpp in Sources */,
+				6F5325882A9ABAA700E44980 /* thd_lzma_dec.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -210,11 +210,45 @@ enum adaptive_comparison {
     ADAPTIVE_GREATER_OR_EQUAL,
 };
 
+// From Common/esif_sdk_iface_esif.h:
+#define ESIF_SERVICE_CONFIG_COMPRESSED  0x40000000/* Payload is Compressed */
+//From ESIF/Products/ESIF_LIB/Sources/esif_lib_datavault.c
+#define ESIFDV_HEADER_SIGNATURE            0x1FE5
+#define ESIFDV_ITEM_KEYS_REV0_SIGNATURE    0xA0D8
+
+/* From esif_lilb_datavault.h */
+#define ESIFDV_NAME_LEN                32    // Max DataVault Name (Cache Name) Length (not including NULL)
+#define ESIFDV_DESC_LEN                64    // Max DataVault Description Length (not including NULL)
+
+#define SHA256_HASH_BYTES            32
+
 typedef struct __attribute__ ((packed)) {
     uint16_t signature;
     uint16_t headersize;
-    uint32_t version;
-    uint32_t flags;
+    union {
+        uint32_t raw;
+        struct {
+            uint16_t revision;
+            uint8_t  minor;
+            uint8_t  major;
+        };
+    } version;
+    union {
+        /* Added in V1 */
+        struct {
+            uint32_t flags;
+        } v1;
+
+        /* Added in V2 */
+        struct {
+            uint32_t flags;
+            char     segmentid[ESIFDV_NAME_LEN];
+            char     comment[ESIFDV_DESC_LEN];
+            uint8_t  payload_hash[SHA256_HASH_BYTES];
+            uint32_t payload_size;
+            uint32_t payload_class;
+        } v2;
+    };
 } GDDVHeader;
 
 typedef struct __attribute__ ((packed)) {
@@ -222,15 +256,56 @@ typedef struct __attribute__ ((packed)) {
     uint32_t length;
 } GDDVKeyHeader;
 
-#define type_uint64 4
-#define type_container 7
-#define type_string 8
-#define type_uint32 0x1a
+/* From esif_sdk_data_type.h */
+typedef enum esif_data_type {
+    ESIF_DATA_ANGLE = 41,
+    ESIF_DATA_AUTO = 36,
+    ESIF_DATA_BINARY = 7,
+    ESIF_DATA_BLOB = 34,
+    ESIF_DATA_DECIBEL = 39,
+    ESIF_DATA_DSP = 33,
+    ESIF_DATA_ENUM = 19,
+    ESIF_DATA_FREQUENCY = 40,
+    ESIF_DATA_GUID = 5,
+    ESIF_DATA_HANDLE = 20,
+    ESIF_DATA_INSTANCE = 30,
+    ESIF_DATA_INT16 = 12,
+    ESIF_DATA_INT32 = 13,
+    ESIF_DATA_INT64 = 14,
+    ESIF_DATA_INT8 = 11,
+    ESIF_DATA_IPV4 = 16,
+    ESIF_DATA_IPV6 = 17,
+    ESIF_DATA_JSON = 42,
+    ESIF_DATA_PERCENT = 29,
+    ESIF_DATA_POINTER = 18,
+    ESIF_DATA_POWER = 26,
+    ESIF_DATA_QUALIFIER = 28,
+    ESIF_DATA_REGISTER = 15,
+    ESIF_DATA_STRING = 8,
+    ESIF_DATA_STRUCTURE = 32,
+    ESIF_DATA_TABLE = 35,
+    ESIF_DATA_TEMPERATURE = 6,
+    ESIF_DATA_TIME = 31,
+    ESIF_DATA_UINT16 = 2,
+    ESIF_DATA_UINT32 = 3,
+    ESIF_DATA_UINT64 = 4,
+    ESIF_DATA_UINT8 = 1,
+    ESIF_DATA_UNICODE = 9,
+    ESIF_DATA_VOID = 24,
+    ESIF_DATA_XML = 38,
+} esif_data_type_t;
 
 typedef struct __attribute__ ((packed)) {
     uint32_t type;
     uint64_t value;
 } uint64Container;
+
+typedef struct __attribute__ ((packed)) {
+    uint32_t type;
+    uint64_t length;
+    uuid_t guid;
+} guidContainer;
+
 
 class ThermalSolution : public IOService {
     typedef IOService super;
@@ -264,6 +339,8 @@ class ThermalSolution : public IOService {
     OSDictionary *parseAPPC(const void *data, uint32_t length);
     OSDictionary *parsePPCC(const void *data, uint32_t length);
     OSDictionary *parsePSVT(const void *data, uint32_t length);
+    OSDictionary *parseIDSP(const void *data, uint32_t length);
+    OSDictionary *parseBinary(const void *data, uint32_t length);
 
     bool evaluateGDDV();
     bool evaluateODVP();

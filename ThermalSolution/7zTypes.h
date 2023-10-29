@@ -293,11 +293,11 @@ typedef const ISzAlloc * ISzAllocPtr;
 struct ISzAlloc
 {
   void *(*Alloc)(ISzAllocPtr p, size_t size);
-  void (*Free)(ISzAllocPtr p, void *address); /* address can be 0 */
+  void (*Free)(ISzAllocPtr p, void *address, size_t size); /* address can be 0 */
 };
 
 #define ISzAlloc_Alloc(p, size) (p)->Alloc(p, size)
-#define ISzAlloc_Free(p, a) (p)->Free(p, a)
+#define ISzAlloc_Free(p, a, size) (p)->Free(p, a, size)
 
 /* deprecated */
 #define IAlloc_Alloc(p, size) ISzAlloc_Alloc(p, size)

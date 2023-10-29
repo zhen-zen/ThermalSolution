@@ -8,9 +8,19 @@
 //
 
 #include "ThermalSolution.hpp"
-#include <lzma_stub.h>
+#include "thd_lzma_dec.h"
 
 OSDefineMetaClassAndStructors(ThermalSolution, IOService)
+
+OSString *parseDeciKelvin(uint32_t raw) {
+    char temp_str[10];
+    if (raw == 0xFFFFFFFF)
+        return OSString::withCString("Invalid");
+
+    SInt32 celsius = acpi_deci_kelvin_to_deci_celsius(raw);
+    snprintf(temp_str, 10, "%d.%d℃", celsius / 10, celsius % 10);
+    return (OSString::withCString(temp_str));
+}
 
 bool ThermalSolution::start(IOService *provider) {
     if (!super::start(provider) || !(dev = OSDynamicCast(IOACPIPlatformDevice, provider)))
@@ -198,7 +208,7 @@ OSDictionary *ThermalSolution::parseAPAT(const void *data, uint32_t length) {
 
     const uint64Container *version = reinterpret_cast<const uint64Container *>(data);
     setPropertyNumber(ret, "version", version->value, 64);
-    if (version->type != 4 || version->value != 2)
+    if (version->type != ESIF_DATA_UINT64 || version->value != 2)
         return ret;
 
     const char* offset = reinterpret_cast<const char *>(data);
@@ -248,7 +258,7 @@ OSDictionary *ThermalSolution::parseAPCT(const void *data, uint32_t length) {
 
     const uint64Container *version = reinterpret_cast<const uint64Container *>(data);
     setPropertyNumber(ret, "version", version->value, 64);
-    if (version->type != 4)
+    if (version->type != ESIF_DATA_UINT64)
         return ret;
 
     const char* offset = reinterpret_cast<const char *>(data);
@@ -401,7 +411,7 @@ OSDictionary *ThermalSolution::parseAPPC(const void *data, uint32_t length) {
 
     const uint64Container *version = reinterpret_cast<const uint64Container *>(data);
     setPropertyNumber(ret, "version", version->value, 64);
-    if (version->type != 4 || version->value != 1)
+    if (version->type != ESIF_DATA_UINT64 || version->value != 1)
         return ret;
 
     const char* offset = reinterpret_cast<const char *>(data);
@@ -442,9 +452,10 @@ OSDictionary *ThermalSolution::parseAPPC(const void *data, uint32_t length) {
 OSDictionary *ThermalSolution::parsePPCC(const void *data, uint32_t length) {
     OSDictionary *ret = OSDictionary::withCapacity(1);
     OSObject *value;
+    char iname[10];
 
     const uint64Container *content = reinterpret_cast<const uint64Container *>(data);
-    setPropertyNumber(ret, "unknown0", content[0].value, 64);
+    setPropertyNumber(ret, "version", content[0].value, 64);
     setPropertyNumber(ret, "unknown1", content[1].value, 64);
     setPropertyNumber(ret, "power_limit_min", content[2].value, 64);
     setPropertyNumber(ret, "power_limit_max", content[3].value, 64);
@@ -452,10 +463,8 @@ OSDictionary *ThermalSolution::parsePPCC(const void *data, uint32_t length) {
     setPropertyNumber(ret, "time_wind_max", content[5].value, 64);
     setPropertyNumber(ret, "step_size", content[6].value, 64);
     for (int i = 7; i < length / sizeof(uint64Container); i++) {
-        char *name = new char[10];
-        snprintf(name, 10, "unknown%X", i);
-        setPropertyNumber(ret, name, content[i].value, 64);
-        delete [] name;
+        snprintf(iname, 10, "unknown%02X", i);
+        setPropertyNumber(ret, iname, content[i].value, 64);
     }
     return ret;
 }
@@ -469,7 +478,7 @@ OSDictionary *ThermalSolution::parsePSVT(const void *data, uint32_t length) {
     const uint64Container *version = reinterpret_cast<const uint64Container *>(offset);
     offset += sizeof(uint64Container);
     setPropertyNumber(ret, "version", version->value, 64);
-    if (version->type != 4 || version->value != 2)
+    if (version->type != ESIF_DATA_UINT64 || version->value != 2)
         return ret;
 
     OSArray *arr = OSArray::withCapacity(1);
@@ -493,7 +502,7 @@ OSDictionary *ThermalSolution::parsePSVT(const void *data, uint32_t length) {
         setPropertyNumber(entry, "control_knob", content[4].value, 64);
 
         offset += 6 * sizeof(uint64Container);
-        if (content[5].type == type_string) {
+        if (content[5].type == ESIF_DATA_STRING) {
             setPropertyString(entry, "limit", offset);
             offset += content[5].value;
         } else {
@@ -514,6 +523,102 @@ OSDictionary *ThermalSolution::parsePSVT(const void *data, uint32_t length) {
     return ret;
 }
 
+OSDictionary *ThermalSolution::parseIDSP(const void *data, uint32_t length) {
+    OSDictionary *ret = OSDictionary::withCapacity(1);
+    OSObject *value;
+
+    const char* offset = reinterpret_cast<const char *>(data);
+
+    OSArray *arr = OSArray::withCapacity(1);
+    while (offset < reinterpret_cast<const char *>(data) + length) {
+        char guid_string[37];
+        const guidContainer *item = reinterpret_cast<const guidContainer *>(offset);
+
+        if ((reinterpret_cast<const char *>(data) + length - offset) < sizeof(guidContainer))
+            break;
+        // Should be 5 - ESIF_DATA_GUID instead?
+        if (item->type != ESIF_DATA_BINARY)
+            break;
+        uuid_unparse_upper(item->guid, guid_string);
+        value = OSString::withCString(guid_string);
+        arr->setObject(value);
+        value->release();
+        offset += sizeof(guidContainer);
+        if (item->length != sizeof(uuid_t))
+            offset += item->length - sizeof(uuid_t);
+    }
+    ret->setObject("idsp", arr);
+    arr->release();
+    return ret;
+}
+
+OSDictionary *ThermalSolution::parseBinary(const void *data, uint32_t length) {
+    OSDictionary *ret = OSDictionary::withCapacity(1);
+    OSObject *value;
+
+    uint64_t size, seq = 0;
+    char iname[10];
+
+    const char* offset = reinterpret_cast<const char *>(data);
+    while (offset < reinterpret_cast<const char *>(data) + length) {
+        snprintf(iname, 10, "unknown%02llX", seq++);
+
+        switch (*reinterpret_cast<const uint32_t *>(offset)) {
+            case ESIF_DATA_UINT32:
+                setPropertyNumber(ret, iname, *reinterpret_cast<const uint32_t *>(offset + sizeof(uint32_t)), 32);
+                offset += sizeof(uint32_t) + sizeof(uint32_t);
+                break;
+
+            case ESIF_DATA_UINT64:
+                setPropertyNumber(ret, iname, *reinterpret_cast<const uint64_t *>(offset + sizeof(uint32_t)), 64);
+                offset += sizeof(uint32_t) + sizeof(uint64_t);
+                break;
+
+            case ESIF_DATA_BINARY:
+                size = *reinterpret_cast<const uint64_t *>(offset + sizeof(uint32_t));
+                offset += sizeof(uint32_t) + sizeof(uint64_t);
+                setPropertyBytes(ret, iname, offset, (uint32_t) size);
+                offset += size;
+                break;
+
+            case ESIF_DATA_STRING:
+                size = *reinterpret_cast<const uint64_t *>(offset + sizeof(uint32_t));
+                offset += sizeof(uint32_t) + sizeof(uint64_t);
+                setPropertyString(ret, iname, offset);
+                offset += size;
+                break;
+
+            default:
+                AlwaysLog("Unknown data type %d at", *reinterpret_cast<const uint32_t *>(offset));
+                setPropertyBytes(ret, "raw", data, length < 0xff ? length : 0xff);
+                return ret;
+        }
+    }
+    return ret;
+}
+
+const char *strstr(const char *stack, const char *needle, size_t len) {
+    if (len == 0) {
+        len = strlen(needle);
+        if (len == 0) return stack;
+    }
+
+    const char *i = needle;
+
+    while (*stack) {
+        if (*stack == *i) {
+            i++;
+            if (static_cast<size_t>(i - needle) == len)
+                return stack - len + 1;
+        } else {
+            i = needle;
+        }
+        stack++;
+    }
+
+    return nullptr;
+}
+
 bool ThermalSolution::evaluateGDDV() {
     OSObject *result;
     OSArray *package;
@@ -527,71 +632,243 @@ bool ThermalSolution::evaluateGDDV() {
     }
 
     const GDDVHeader *hdr = reinterpret_cast<const GDDVHeader *>(buf->getBytesNoCopy());
-    OSDictionary *headerDesc = OSDictionary::withCapacity(4);
+    OSDictionary *headerDesc = OSDictionary::withCapacity(6);
     OSObject *value;
+    OSData *decompressed = 0;
     setPropertyNumber(headerDesc, "Signature", hdr->signature, 16);
-    int ver = OSSwapInt32(hdr->version);
-    setPropertyNumber(headerDesc, "Version", ver, 32);
-    setPropertyNumber(headerDesc, "Flags", hdr->flags, 32);
+    setPropertyNumber(headerDesc, "Major", hdr->version.major, 8);
+    setPropertyNumber(headerDesc, "Minor", hdr->version.minor, 8);
+    setPropertyNumber(headerDesc, "Revision", hdr->version.revision, 16);
+    setPropertyNumber(headerDesc, "Flags", hdr->v1.flags, 32);
     setPropertyNumber(headerDesc, "Length", buf->getLength(), 32);
     setProperty("GDDV", headerDesc);
-    headerDesc->release();
+    OSSafeReleaseNULL(headerDesc);
 
-    if (ver == 2) {
-        AlwaysLog("Uncompress not implemented");
-        return true;
+    if (hdr->signature != ESIFDV_HEADER_SIGNATURE) {
+        AlwaysLog("Unsupported signature");
+        OSSafeReleaseNULL(result);
+        return false;
     }
 
     int offset = hdr->headersize;
 
+    if (hdr->version.major == 2) {
+        if (hdr->headersize != sizeof(GDDVHeader)) {
+            AlwaysLog("Header size mismatch");
+            OSSafeReleaseNULL(result);
+            return false;
+        }
+        if (hdr->v2.payload_size != buf->getLength() - hdr->headersize) {
+            AlwaysLog("Payload size mismatch");
+            OSSafeReleaseNULL(result);
+            return false;
+        }
+        char segmentid[ESIFDV_NAME_LEN+1];
+        char comment[ESIFDV_DESC_LEN+1];
+        char payload_class[5];
+        strncpy(segmentid, hdr->v2.segmentid, ESIFDV_NAME_LEN);
+        strncpy(comment, hdr->v2.comment, ESIFDV_DESC_LEN);
+        strncpy(payload_class, reinterpret_cast<const char *>(&hdr->v2.payload_class), 4);
+        segmentid[ESIFDV_NAME_LEN] = 0;
+        comment[ESIFDV_DESC_LEN] = 0;
+        payload_class[4] = 0;
+        headerDesc = OSDictionary::withCapacity(5);
+        setPropertyString(headerDesc, "SegmentID", segmentid);
+        setPropertyString(headerDesc, "Comment", comment);
+        setPropertyBytes(headerDesc, "Hash", hdr->v2.payload_hash, SHA256_HASH_BYTES);
+        setPropertyNumber(headerDesc, "PayloadSize", hdr->v2.payload_size, 32);
+        setPropertyString(headerDesc, "PayloadClass", payload_class);
+        setProperty("GDDV2", headerDesc);
+        OSSafeReleaseNULL(headerDesc);
+        if (hdr->v2.flags & ESIF_SERVICE_CONFIG_COMPRESSED) {
+            int res;
+            size_t destlen = 0;
+            res = lzma_decompress(NULL, &destlen, reinterpret_cast<const unsigned char *>(buf->getBytesNoCopy(hdr->headersize, hdr->v2.payload_size)), hdr->v2.payload_size);
+            AlwaysLog("Decompress res = %d req = %zx", res, destlen);
+            if (res != 0) {
+                AlwaysLog("Header verification failed");
+                OSSafeReleaseNULL(result);
+                return false;
+            }
+            if (destlen >> 32) {
+                AlwaysLog("Payload output size exceeded");
+                OSSafeReleaseNULL(result);
+                return false;
+            }
+            setProperty("PayloadOutputSize", destlen, 64);
+            unsigned char *tmp = reinterpret_cast<unsigned char*>(IOMalloc(destlen));
+            if (!tmp) {
+                AlwaysLog("Payload output alloc failed");
+                OSSafeReleaseNULL(result);
+                return false;
+            }
+            res = lzma_decompress(tmp, &destlen, reinterpret_cast<const unsigned char *>(buf->getBytesNoCopy(hdr->headersize, hdr->v2.payload_size)), hdr->v2.payload_size);
+            AlwaysLog("Decompress res = %d req = %zx", res, destlen);
+            if (res != 0) {
+                AlwaysLog("Decompress failed = %d", res);
+                IOFree(tmp, destlen);
+                OSSafeReleaseNULL(result);
+                return false;
+            }
+            decompressed = OSData::withBytes(tmp, (unsigned int)destlen);
+            IOFree(tmp, destlen);
+            if (!decompressed) {
+                AlwaysLog("Payload output copy failed");
+                OSSafeReleaseNULL(result);
+                return false;
+            }
+            buf = decompressed;
+            hdr = reinterpret_cast<const GDDVHeader *>(buf->getBytesNoCopy());
+            memset(segmentid, 0, ESIFDV_NAME_LEN);
+            memset(comment, 0, ESIFDV_DESC_LEN);
+            memset(payload_class, 0, 4);
+            strncpy(segmentid, hdr->v2.segmentid, ESIFDV_NAME_LEN);
+            strncpy(comment, hdr->v2.comment, ESIFDV_DESC_LEN);
+            strncpy(payload_class, reinterpret_cast<const char *>(&hdr->v2.payload_class), 4);
+            headerDesc = OSDictionary::withCapacity(11);
+            setPropertyNumber(headerDesc, "Signature", hdr->signature, 16);
+            setPropertyNumber(headerDesc, "Major", hdr->version.major, 8);
+            setPropertyNumber(headerDesc, "Minor", hdr->version.minor, 8);
+            setPropertyNumber(headerDesc, "Revision", hdr->version.revision, 16);
+            setPropertyNumber(headerDesc, "Flags", hdr->v1.flags, 32);
+            setPropertyNumber(headerDesc, "DestLen", destlen, 64);
+            setPropertyString(headerDesc, "SegmentID", segmentid);
+            setPropertyString(headerDesc, "Comment", comment);
+            setPropertyBytes(headerDesc, "Hash", hdr->v2.payload_hash, SHA256_HASH_BYTES);
+            setPropertyNumber(headerDesc, "PayloadSize", hdr->v2.payload_size, 32);
+            setPropertyString(headerDesc, "PayloadClass", payload_class);
+            setProperty("GDDV3", headerDesc);
+            OSSafeReleaseNULL(headerDesc);
+
+            if (hdr->signature != ESIFDV_HEADER_SIGNATURE) {
+                AlwaysLog("Unsupported signature");
+                OSSafeReleaseNULL(result);
+                OSSafeReleaseNULL(decompressed);
+                return false;
+            }
+        } else {
+            AlwaysLog("Non-uncompress flag not implemented");
+            return true;
+        }
+    }
+
     OSDictionary *entries = OSDictionary::withCapacity(1);
     while ((offset < buf->getLength())) {
+        if (hdr->version.major == 2) {
+            const uint16_t *signature = reinterpret_cast<const uint16_t *>(buf->getBytesNoCopy(offset, sizeof(uint16_t)));
+            if (*signature == ESIFDV_ITEM_KEYS_REV0_SIGNATURE) {
+                offset += sizeof(uint16_t);
+            } else if (*signature == ESIFDV_HEADER_SIGNATURE) {
+                DebugLog("Found GDDV item at %x", offset);
+                const GDDVHeader *hdr_e = reinterpret_cast<const GDDVHeader *>(buf->getBytesNoCopy(offset, sizeof(GDDVHeader)));
+                headerDesc = OSDictionary::withCapacity(10);
+                setPropertyNumber(headerDesc, "Signature", hdr_e->signature, 16);
+                setPropertyNumber(headerDesc, "Major", hdr_e->version.major, 8);
+                setPropertyNumber(headerDesc, "Minor", hdr_e->version.minor, 8);
+                setPropertyNumber(headerDesc, "Revision", hdr_e->version.revision, 16);
+                setPropertyNumber(headerDesc, "Flags", hdr_e->v1.flags, 32);
+                if (hdr_e->version.major != 2) {
+                    AlwaysLog("Unsupport GDDV version: %x", hdr_e->version.raw);
+                    setProperty("GDDV4", headerDesc);
+                    OSSafeReleaseNULL(headerDesc);
+                    break;
+                }
+                char segmentid[ESIFDV_NAME_LEN+1];
+                char comment[ESIFDV_DESC_LEN+1];
+                char payload_class[5];
+                strncpy(segmentid, hdr->v2.segmentid, ESIFDV_NAME_LEN);
+                strncpy(comment, hdr->v2.comment, ESIFDV_DESC_LEN);
+                strncpy(payload_class, reinterpret_cast<const char *>(&hdr->v2.payload_class), 4);
+                segmentid[ESIFDV_NAME_LEN] = 0;
+                comment[ESIFDV_DESC_LEN] = 0;
+                payload_class[4] = 0;
+                setPropertyString(headerDesc, "SegmentID", segmentid);
+                setPropertyString(headerDesc, "Comment", comment);
+                setPropertyBytes(headerDesc, "Hash", hdr_e->v2.payload_hash, SHA256_HASH_BYTES);
+                setPropertyNumber(headerDesc, "PayloadSize", hdr_e->v2.payload_size, 32);
+                setPropertyString(headerDesc, "PayloadClass", payload_class);
+                setPropertyBytes(headerDesc, "Raw", buf->getBytesNoCopy(offset, hdr_e->headersize + hdr_e->v2.payload_size), hdr_e->headersize + hdr_e->v2.payload_size);
+                setProperty("GDDV4", headerDesc);
+                OSSafeReleaseNULL(headerDesc);
+                offset += hdr_e->headersize;
+                signature = reinterpret_cast<const uint16_t *>(buf->getBytesNoCopy(offset, sizeof(uint16_t)));
+                if (*signature == ESIFDV_ITEM_KEYS_REV0_SIGNATURE) {
+                    offset += sizeof(uint16_t);
+                } else {
+                    AlwaysLog("Unknown signature: %x", *signature);
+                    offset += hdr_e->v2.payload_size;
+                    continue;
+                }
+            } else {
+                AlwaysLog("Unknown signature: %x", *signature);
+                break;
+            }
+        }
+
         const GDDVKeyHeader *key = reinterpret_cast<const GDDVKeyHeader *>(buf->getBytesNoCopy(offset, sizeof(GDDVKeyHeader)));
         offset += sizeof(GDDVKeyHeader);
 
-        const char *name = reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, key->length));
+        const char *iname = reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, key->length));
+        const char *oname = iname;
         offset += key->length;
 
         const GDDVKeyHeader *val = reinterpret_cast<const GDDVKeyHeader *>(buf->getBytesNoCopy(offset, sizeof(GDDVKeyHeader)));
         offset += sizeof(GDDVKeyHeader);
 
-        if (name[0] != '/' || key->flag != 1) {
-            entries->setObject(name, kOSBooleanFalse);
+        if (iname[0] != '/' || key->flag != 1) {
+            entries->setObject(iname, kOSBooleanFalse);
             offset += val->length;
             continue;
         }
 
-        OSDictionary *parent = parsePath(entries, name);
+        OSDictionary *parent = parsePath(entries, iname);
         OSObject *content = nullptr;
 
         switch (val->flag) {
-            case type_string:
+            case ESIF_DATA_UINT32:
+            case ESIF_DATA_POWER:
+                if (val->length == 4)
+                    content = OSNumber::withNumber(*(reinterpret_cast<const uint32_t *>(buf->getBytesNoCopy(offset, val->length))), 32);
+                else
+                    AlwaysLog("Unknown length %d uint32/power data at: %x", val->length, offset);
+                break;
+
+            case ESIF_DATA_TEMPERATURE:
+                content = parseDeciKelvin(*(reinterpret_cast<const uint32_t *>(buf->getBytesNoCopy(offset, val->length))));
+                break;
+
+            case ESIF_DATA_STRING:
                 content = OSString::withCString(reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, val->length)));
                 break;
 
-            case type_container:
-                if (!strncmp(name, "/apat", strlen("/apat")))
+            case ESIF_DATA_BINARY:
+                if (!strncmp(iname, "/apat", strlen("/apat")))
                     content = parseAPAT(buf->getBytesNoCopy(offset, val->length), val->length);
-                else if (!strncmp(name, "/apct", strlen("/apct")))
+                else if (!strncmp(iname, "/apct", strlen("/apct")))
                     content = parseAPCT(buf->getBytesNoCopy(offset, val->length), val->length);
-                else if (!strncmp(name, "/appc", strlen("/appc")))
+                else if (!strncmp(iname, "/appc", strlen("/appc")))
                     content = parseAPPC(buf->getBytesNoCopy(offset, val->length), val->length);
-                else if (!strncmp(name, "/ppcc", strlen("/ppcc")))
+                else if (!strncmp(iname, "/ppcc", strlen("/ppcc")))
                     content = parsePPCC(buf->getBytesNoCopy(offset, val->length), val->length);
-                else if (!strncmp(name, "/psvt", strlen("/psvt")))
+                else if (!strncmp(iname, "/psvt", strlen("/psvt")) || !!strstr(oname, "/psvt", 0))
                     content = parsePSVT(buf->getBytesNoCopy(offset, val->length), val->length);
+                else if (!strncmp(iname, "/idsp", strlen("/idsp")))
+                    content = parseIDSP(buf->getBytesNoCopy(offset, val->length), val->length);
+                else {
+                    AlwaysLog("Unknown binary %s at %x", iname, offset);
+                    content = parseBinary(buf->getBytesNoCopy(offset, val->length), val->length);
+                }
                 break;
 
-            case type_uint32:
-                if (val->length == 4)
-                    content = OSNumber::withNumber(*(reinterpret_cast<const uint32_t *>(buf->getBytesNoCopy(offset, val->length))), 32);
+            case ESIF_DATA_JSON:
+                content = OSString::withCString(reinterpret_cast<const char *>(buf->getBytesNoCopy(offset, val->length)));
                 break;
         }
         if (!content) {
             OSDictionary *keyDesc = OSDictionary::withCapacity(1);
             setPropertyNumber(keyDesc, "type", val->flag, 32);
             setPropertyNumber(keyDesc, "length", val->length, 32);
-            if (val->length < 0x30)
+            if (val->length < 0xff)
                 setPropertyBytes(keyDesc, "value", buf->getBytesNoCopy(offset, val->length), val->length);
             content = keyDesc;
 #ifdef DEBUG
@@ -602,13 +879,14 @@ bool ThermalSolution::evaluateGDDV() {
 #endif
         }
         offset += val->length;
-        parent->setObject(name, content);
+        parent->setObject(iname, content);
         OSSafeReleaseNULL(content);
         OSSafeReleaseNULL(parent);
     }
     setProperty("GDDVEntry", entries);
     entries->release();
     OSSafeReleaseNULL(result);
+    OSSafeReleaseNULL(decompressed);
     return true;
 }
 

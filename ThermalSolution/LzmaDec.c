@@ -1064,13 +1064,13 @@ SRes LzmaDec_DecodeToBuf(CLzmaDec *p, Byte *dest, SizeT *destLen, const Byte *sr
 
 void LzmaDec_FreeProbs(CLzmaDec *p, ISzAllocPtr alloc)
 {
-  ISzAlloc_Free(alloc, p->probs);
+  ISzAlloc_Free(alloc, p->probs, p->numProbs * sizeof(CLzmaProb));
   p->probs = NULL;
 }
 
 static void LzmaDec_FreeDict(CLzmaDec *p, ISzAllocPtr alloc)
 {
-  ISzAlloc_Free(alloc, p->dic);
+  ISzAlloc_Free(alloc, p->dic, p->dicBufSize);
   p->dic = NULL;
 }
 
